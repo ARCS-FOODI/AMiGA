@@ -1,5 +1,20 @@
 # AMiGA System Overview
 
+## Installation
+
+```bash
+# System dependencies
+sudo apt update && sudo apt install -y python3-venv python3-pip python3-lgpio i2c-tools
+sudo raspi-config  # Enable I2C interface
+
+# Python environment setup
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install Python packages
+pip install adafruit-blinka adafruit-circuitpython-ads1x15
+```
+
 The AMiGA system.py is an automated plant irrigation controller implemented on a Raspberry Pi 5. The system operates through moisture-based feedback control, utilizing sensor data to manage water distribution.
 
 ## System Components

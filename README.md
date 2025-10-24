@@ -59,17 +59,3 @@ Together, these efforts help strengthen CEA’s potential as a viable, sustainab
 To learn more about the FOODI initiative and related research efforts, visit:  
 👉 [ARCS FOODI Project Overview](https://arcs.center/facilitating-overcoming-obstacles-to-development-and-integration-foodi-of-modern-technologies-for-controlled-environment-agriculture-cea/)
 
----
-
-## 🧾 License  
-
-This project is released under the **MIT License**.  
-See `LICENSE` for details.
-
----
-
-## 👥 Contributors  
-
-- **Christopher Butler** – Research & Development Lead  
-- **Zedric [Last Name]** – Systems Integration  
-- **ARCS FOODI Research Team, CSUN** – Oversight & Collaboration  

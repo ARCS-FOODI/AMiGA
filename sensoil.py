@@ -60,7 +60,7 @@ cam = Camera()
 
 # ---------- GOOGLE SHEETS SETUP ----------
 gc = gspread.service_account(filename="/home/sensoil/raspberry_creds.json")
-spreadsheet = gc.open_by_key("1OC5V8gO9rsCw6s7kmA14LkwaMYxl2B4F0VYINSpyAGY")  
+spreadsheet = gc.open_by_key("xxx")  
 worksheet = spreadsheet.sheet1
 
 # ---------- AUTHENTICATE GOOGLE DRIVE ----------

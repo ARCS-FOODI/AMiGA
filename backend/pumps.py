@@ -52,6 +52,31 @@ def step_for_seconds(handle: int, pump: str, hz: float, seconds: float) -> None:
         write(handle, sp, 0); time.sleep(half)
 
 
+def step_for_seconds_multi(handle: int, pump_names: list[str], hz: float, seconds: float) -> None:
+    if hz <= 0:
+        raise ValueError("hz must be > 0")
+    if seconds <= 0:
+        return
+
+    half = 1.0 / (hz * 2.0)
+    end_time = time.time() + seconds
+    write = lgpio.gpio_write
+
+    # Cache STEP pins for all pumps
+    step_pins = [PUMP_PINS[p]["STEP"] for p in pump_names]
+
+    while time.time() < end_time:
+        # rising edge on all STEP pins
+        for sp in step_pins:
+            write(handle, sp, 1)
+        time.sleep(half)
+
+        # falling edge on all STEP pins
+        for sp in step_pins:
+            write(handle, sp, 0)
+        time.sleep(half)
+
+
 def _with_handle(fn):
     """
     Small helper to open/close gpiochip0 around an operation.
@@ -94,6 +119,37 @@ def run_pump_seconds(
 
     return {
         "pump": pump,
+        "seconds": seconds,
+        "hz": hz,
+        "direction": direction,
+        "status": "ok",
+    }
+
+
+@_with_handle
+def run_pumps_seconds(
+    handle: int,
+    pumps_list: list[str],
+    seconds: float,
+    hz: float = DEFAULT_HZ,
+    direction: str = DEFAULT_DIR,
+) -> Dict[str, Any]:
+    """
+    Run multiple pumps simultaneously for the same duration and frequency.
+    """
+    # Set direction + enable all requested pumps
+    for pump in pumps_list:
+        set_direction(handle, pump, direction)
+        enable_driver(handle, pump, True)
+
+    try:
+        step_for_seconds_multi(handle, pumps_list, hz, seconds)
+    finally:
+        for pump in pumps_list:
+            enable_driver(handle, pump, False)
+
+    return {
+        "pumps": pumps_list,
         "seconds": seconds,
         "hz": hz,
         "direction": direction,

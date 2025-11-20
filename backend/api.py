@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from typing import List
 
 from .settings import (
     PUMP_PINS,
@@ -40,6 +41,12 @@ app.add_middleware(
 
 class PumpSecondsRequest(BaseModel):
     pump: str = Field("water")
+    seconds: float = Field(..., gt=0)
+    hz: float = Field(DEFAULT_HZ, gt=0)
+    direction: str = Field(DEFAULT_DIR)
+
+class PumpMultiSecondsRequest(BaseModel):
+    pumps: List[str] = Field(default_factory=lambda: ["water", "food"])
     seconds: float = Field(..., gt=0)
     hz: float = Field(DEFAULT_HZ, gt=0)
     direction: str = Field(DEFAULT_DIR)
@@ -122,6 +129,24 @@ def api_run_pump_seconds(req: PumpSecondsRequest):
     try:
         return pumps.run_pump_seconds(
             pump=req.pump,
+            seconds=req.seconds,
+            hz=req.hz,
+            direction=req.direction,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    
+@app.post("/pump/run-multi-seconds")
+def api_run_pumps_seconds(req: PumpMultiSecondsRequest):
+    # validate pump names
+    for p in req.pumps:
+        if p not in PUMP_PINS:
+            raise HTTPException(status_code=400, detail=f"Unknown pump '{p}'")
+
+    try:
+        return pumps.run_pumps_seconds(
+            pumps_list=req.pumps,
             seconds=req.seconds,
             hz=req.hz,
             direction=req.direction,

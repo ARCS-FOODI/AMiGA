@@ -8,7 +8,7 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
         "DIR": 6,   # was 27
         "EN": 13,   # was 22 (EN active LOW)
     },
-    "nutrients": {  # pump for nutrient solution
+    "food": {  # pump for food solution
         "STEP": 17,
         "DIR": 27,
         "EN": 22,

@@ -30,7 +30,7 @@ DEFAULT_THRESH = 35.0       # % moisture for classification, if needed
 DEFAULT_DO_PIN = 6          # optional digital wet/dry
 
 # Motor defaults
-DEFAULT_HZ     = 300
+DEFAULT_HZ     = 30000
 DEFAULT_DIR    = "forward"
 
 # Full scenario defaults

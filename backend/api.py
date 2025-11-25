@@ -21,6 +21,7 @@ from .settings import (
     DEFAULT_VOTE_K,
     DEFAULT_IRR_SEC,
     DEFAULT_SAMPLES,
+    DEFAULT_COOLDOWN_S,
 )
 from . import sensors, pumps, control, config_store
 
@@ -243,6 +244,30 @@ def api_control_cycle(req: ControlCycleRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/control/run-continuous")
+def api_control_run_continuous(req: ControlCycleRequest):
+    if req.pump not in PUMP_PINS:
+        raise HTTPException(status_code=400, detail=f"Unknown pump '{req.pump}'")
+
+    # ⚠ This call will BLOCK and never return until the process is stopped.
+    control.control_cycle_continuous(
+        pump=req.pump,
+        target_threshold=req.target_threshold,
+        vote_k=req.vote_k,
+        hz=req.hz,
+        irrigate_seconds=req.irrigate_seconds,
+        direction=req.direction,
+        addr=req.addr,
+        gain=req.gain,
+        avg=req.avg,
+        dry_v=req.dry_v,
+        wet_v=req.wet_v,
+        loop_interval=DEFAULT_COOLDOWN_S,  # or req-specific if you add it
+    )
+
+    # Practically never reached
+    return {"status": "stopped"}
 
 
 # Uvicorn entrypoint (optional)

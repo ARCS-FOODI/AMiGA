@@ -22,4 +22,3 @@ def preview_usb_cam(cam_index=0):
     cv2.destroyAllWindows()
 
 preview_usb_cam(0)  # Change to 1 if you have multiple cameras
-## Hao is awesome

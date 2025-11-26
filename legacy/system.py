@@ -18,7 +18,7 @@ Examples:
 Hardware:
   ADS1115 I2C @ 0x48 (SDA=SDA, SCL=SCL)
   A0..A3 from HW-103 AO pins (or other analog moisture sensors)
-  Optional HW-103 DO → BCM GPIO6 (Pin 31)
+  Optional HW-103 DO → BCM GPIO26 (Pin 37)  # UPDATED
 
   TMC2209/TMCxxxx driver (peristaltic pump):
     STEP = BCM17 (Pin 11)
@@ -66,7 +66,7 @@ DEFAULT_SAMPLES= 30
 DEFAULT_DRY_V  = 2.00
 DEFAULT_WET_V  = 0.60
 DEFAULT_THRESH = 35.0       # % moisture for classification, if needed
-DEFAULT_DO_PIN = 6          # optional digital wet/dry
+DEFAULT_DO_PIN = 26         # UPDATED: BCM26 = physical pin 37
 
 # Motor defaults
 DEFAULT_HZ     = 300
@@ -218,12 +218,13 @@ def scenario_calibrate(args):
 
 def scenario_sensors(args):
     ads, chans = init_ads(args.addr, args.gain)
-    do_handle = open_digital_gpio(args.do_pin) if args.digital else None
+    # Always open DO now
+    do_handle = open_digital_gpio(args.do_pin)
     try:
         print(f"[INFO] ADS1115 @ 0x{args.addr:02X}, gain={args.gain}")
         print(f"[INFO] Calib: DRY≈{args.dry:.2f} V, WET≈{args.wet:.2f} V; threshold={args.thresh_pct:.1f}%")
-        if args.digital:
-            print(f"[INFO] DO on BCM{args.do_pin}{' (invert)' if args.invert else ''}")
+        print(f"[INFO] DO on BCM{args.do_pin}{' (invert)' if args.invert else ''}")  # UPDATED
+
         for i in range(1, args.samples + 1):
             volts = read_four_channels(chans, args.avg)
             pcts  = [v_to_pct(v, args.dry, args.wet) for v in volts]
@@ -313,7 +314,7 @@ def build_parser():
     ps.add_argument("--dry", type=float, default=DEFAULT_DRY_V)
     ps.add_argument("--wet", type=float, default=DEFAULT_WET_V)
     ps.add_argument("--thresh-pct", dest="thresh_pct", type=float, default=DEFAULT_THRESH)
-    ps.add_argument("--digital", action="store_true", help="Read DO on --do-pin as well")
+    # Removed --digital flag; DO is always read
     ps.add_argument("--do-pin", type=int, default=DEFAULT_DO_PIN)
     ps.add_argument("--invert", action="store_true", help="Invert DO logic")
     ps.set_defaults(func=scenario_sensors)

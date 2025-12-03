@@ -1,4 +1,3 @@
-# backend/settings.py
 from typing import Dict
 
 # Pump pin maps (BCM numbering)
@@ -26,7 +25,8 @@ DEFAULT_INTSEC = 1.0
 DEFAULT_SAMPLES= 30
 DEFAULT_DRY_V  = 2.00
 DEFAULT_WET_V  = 0.60
-DEFAULT_THRESH = 35.0       # % moisture for classification, if needed
+# Now interpreted as a **voltage** threshold in volts
+DEFAULT_THRESH = 1.50       # V threshold for irrigation logic
 DEFAULT_DO_PIN = 6          # optional digital wet/dry
 
 # Motor defaults
@@ -34,6 +34,6 @@ DEFAULT_HZ     = 30000
 DEFAULT_DIR    = "forward"
 
 # Full scenario defaults
-DEFAULT_VOTE_K      = 2     # need at least K of 4 under threshold
+DEFAULT_VOTE_K      = 2     # need at least K of 4 over threshold
 DEFAULT_COOLDOWN_S  = 10.0  # wait after an irrigation cycle
 DEFAULT_IRR_SEC     = 5.0   # seconds to run pump when triggered

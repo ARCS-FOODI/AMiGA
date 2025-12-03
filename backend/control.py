@@ -1,4 +1,3 @@
-# backend/control.py
 from __future__ import annotations
 
 from typing import Dict, Any
@@ -23,7 +22,7 @@ from . import sensors, pumps
 # Paths for logging
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
-LOG_FILE = DATA_DIR / "moisture_cycles.csv"
+LOG_FILE = DATA_DIR / "moisture_cycles.csv"  # name kept for backward compatibility
 
 
 def _ensure_log_file_has_header() -> None:
@@ -37,21 +36,21 @@ def _ensure_log_file_has_header() -> None:
             writer.writerow([
                 "timestamp",
                 "pump",
-                "target_threshold",
+                "target_threshold_v",      # voltage threshold in V
                 "vote_k",
                 "hz",
                 "irrigate_seconds",
-                "under_threshold_count",
+                "over_threshold_count",    # number of channels with v > threshold
                 "triggered",
                 "irrigated",
-                "before_m0",
-                "before_m1",
-                "before_m2",
-                "before_m3",
-                "after_m0",
-                "after_m1",
-                "after_m2",
-                "after_m3",
+                "before_v0",
+                "before_v1",
+                "before_v2",
+                "before_v3",
+                "after_v0",
+                "after_v1",
+                "after_v2",
+                "after_v3",
             ])
 
 
@@ -67,7 +66,11 @@ def _log_control_cycle_to_csv(result: Dict[str, Any]) -> None:
     vote_k = result.get("vote_k")
     hz = result.get("hz")
     irrigate_seconds = result.get("irrigate_seconds")
-    under = result.get("under_threshold_count")
+
+    # For backward compatibility with existing API key,
+    # this count is "sensors considered dry" = v > threshold.
+    over = result.get("under_threshold_count")
+
     triggered = result.get("triggered", False)
     irrigated = result.get("irrigated", False)
 
@@ -75,17 +78,17 @@ def _log_control_cycle_to_csv(result: Dict[str, Any]) -> None:
     before = result.get("before") or {}
     before_readings = before.get("readings") or []
     if before_readings:
-        before_pcts = before_readings[0].get("moisture_pct", [None, None, None, None])
+        before_volts = before_readings[0].get("voltages", [None, None, None, None])
     else:
-        before_pcts = [None, None, None, None]
+        before_volts = [None, None, None, None]
 
     # After readings (may be None if not irrigated)
     after = result.get("after")
     if after and (after.get("readings") or []):
         after_readings = after["readings"][0]
-        after_pcts = after_readings.get("moisture_pct", [None, None, None, None])
+        after_volts = after_readings.get("voltages", [None, None, None, None])
     else:
-        after_pcts = [None, None, None, None]
+        after_volts = [None, None, None, None]
 
     row = [
         ts,
@@ -94,17 +97,17 @@ def _log_control_cycle_to_csv(result: Dict[str, Any]) -> None:
         vote_k,
         hz,
         irrigate_seconds,
-        under,
+        over,
         int(bool(triggered)),
         int(bool(irrigated)),
-        before_pcts[0],
-        before_pcts[1],
-        before_pcts[2],
-        before_pcts[3],
-        after_pcts[0],
-        after_pcts[1],
-        after_pcts[2],
-        after_pcts[3],
+        before_volts[0],
+        before_volts[1],
+        before_volts[2],
+        before_volts[3],
+        after_volts[0],
+        after_volts[1],
+        after_volts[2],
+        after_volts[3],
     ]
 
     with LOG_FILE.open("a", newline="", encoding="utf-8") as f:
@@ -114,7 +117,7 @@ def _log_control_cycle_to_csv(result: Dict[str, Any]) -> None:
 
 def control_cycle_once(
     pump: str,
-    target_threshold: float = 40.0,
+    target_threshold: float = 1.5,         # voltage threshold in V
     vote_k: int = DEFAULT_VOTE_K,
     hz: float = DEFAULT_HZ,
     irrigate_seconds: float = DEFAULT_IRR_SEC,
@@ -126,18 +129,15 @@ def control_cycle_once(
     wet_v: float = DEFAULT_WET_V,
 ) -> Dict[str, Any]:
     """
-    One-step closed-loop cycle:
+    One-step closed-loop cycle, now based on voltage:
 
-    1. Read moisture sensors once ("before").
-    2. Count how many are below target_threshold.
-    3. If under_count >= vote_k:
+    1. Read sensors once ("before") and get voltages.
+    2. Count how many channels have v > target_threshold (interpreted as "dry").
+    3. If count >= vote_k:
          - Run the given pump for irrigate_seconds.
          - Read sensors again ("after").
        Else:
          - No pump run; "after" = None.
-
-    This is meant to be called either directly from the API
-    or from control_cycle_continuous() below.
     """
     # Read before
     before = sensors.snapshot_sensors(
@@ -148,13 +148,16 @@ def control_cycle_once(
         avg=avg,
         dry_v=dry_v,
         wet_v=wet_v,
+        # Just passed through for metadata; snapshot_sensors doesn't use it internally
         thresh_pct=target_threshold,
         use_digital=False,
     )
 
     before_read = before["readings"][0]
-    before_pcts = before_read["moisture_pct"]
-    under = sum(1 for p in before_pcts if p < target_threshold)
+    before_volts = before_read["voltages"]
+
+    # Dry condition: voltage > threshold (≈ old moisture_pct < 35%)
+    under = sum(1 for v in before_volts if v > target_threshold)
 
     triggered = under >= vote_k
     irrigated = False
@@ -192,6 +195,7 @@ def control_cycle_once(
         "irrigate_seconds": irrigate_seconds,
         "before": before,
         "after": after,
+        # NOTE: kept key name for compatibility; now counts v > threshold (dry)
         "under_threshold_count": under,
         "triggered": triggered,
         "irrigated": irrigated,
@@ -210,7 +214,7 @@ def control_cycle_once(
 
 def control_cycle_continuous(
     pump: str,
-    target_threshold: float = 40.0,
+    target_threshold: float = 1.5,
     vote_k: int = DEFAULT_VOTE_K,
     hz: float = DEFAULT_HZ,
     irrigate_seconds: float = DEFAULT_IRR_SEC,
@@ -226,8 +230,8 @@ def control_cycle_continuous(
     Simple continuous loop version of control_cycle_once.
 
     This will block the calling thread and keep:
-      - reading moisture
-      - deciding
+      - reading voltages
+      - deciding based on voltage threshold
       - maybe irrigating
       - logging to CSV
       - sleeping loop_interval seconds
@@ -248,12 +252,15 @@ def control_cycle_continuous(
             wet_v=wet_v,
         )
 
-        # Optional: basic log to server console
-        before_pcts = result["before"]["readings"][0]["moisture_pct"]
+        # Basic log to server console showing voltages
+        before_volts = result["before"]["readings"][0]["voltages"]
         print(
-            "[CONTROL] moisture%=", [f"{p:4.1f}" for p in before_pcts],
-            "under=", result["under_threshold_count"],
-            "irrigated=", result["irrigated"],
+            "[CONTROL] volts=",
+            [f"{v:4.3f}" for v in before_volts],
+            "over_thresh=",
+            result["under_threshold_count"],  # count of v > threshold
+            "irrigated=",
+            result["irrigated"],
         )
 
         time.sleep(loop_interval)

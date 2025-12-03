@@ -1,3 +1,4 @@
+# backend/api.py
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
@@ -11,8 +12,6 @@ from .settings import (
     DEFAULT_GAIN,
     DEFAULT_AVG,
     DEFAULT_INTSEC,
-    DEFAULT_DRY_V,
-    DEFAULT_WET_V,
     DEFAULT_THRESH,
     DEFAULT_DO_PIN,
     DEFAULT_HZ,
@@ -30,7 +29,7 @@ app = FastAPI(title="AMiGA Irrigation API")
 # CORS for React dev server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten later if you want
+    allow_origins=["*"],  # tighten later if you want
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,11 +38,13 @@ app.add_middleware(
 
 # ---------- Pydantic request models ----------
 
+
 class PumpSecondsRequest(BaseModel):
     pump: str = Field("water")
     seconds: float = Field(..., gt=0)
     hz: float = Field(DEFAULT_HZ, gt=0)
     direction: str = Field(DEFAULT_DIR)
+
 
 class PumpMultiSecondsRequest(BaseModel):
     pumps: List[str] = Field(default_factory=lambda: ["water", "food"])
@@ -76,10 +77,6 @@ class SensorsRequest(BaseModel):
     samples: int = Field(1, ge=1, le=DEFAULT_SAMPLES)
     interval: float = Field(DEFAULT_INTSEC, ge=0.0)
     avg: int = Field(DEFAULT_AVG, ge=1)
-    dry_v: float = DEFAULT_DRY_V
-    wet_v: float = DEFAULT_WET_V
-    # NOTE: now treated as a voltage threshold in V for UI purposes
-    thresh_pct: float = DEFAULT_THRESH
     use_digital: bool = False
     do_pin: int = DEFAULT_DO_PIN
     invert_do: bool = False
@@ -87,8 +84,8 @@ class SensorsRequest(BaseModel):
 
 class ControlCycleRequest(BaseModel):
     pump: str = Field("water")
-    # Now interpreted as a **voltage** threshold (V), default 1.5
-    target_threshold: float = 1.5
+    # Interpreted as a voltage threshold (V)
+    target_threshold: float = DEFAULT_THRESH
     vote_k: int = DEFAULT_VOTE_K
     hz: float = DEFAULT_HZ
     irrigate_seconds: float = DEFAULT_IRR_SEC
@@ -96,11 +93,10 @@ class ControlCycleRequest(BaseModel):
     addr: int = DEFAULT_ADDR
     gain: int = DEFAULT_GAIN
     avg: int = DEFAULT_AVG
-    dry_v: float = DEFAULT_DRY_V
-    wet_v: float = DEFAULT_WET_V
 
 
 # ---------- Info endpoints ----------
+
 
 @app.get("/config")
 def get_config():
@@ -110,10 +106,8 @@ def get_config():
             "addr": DEFAULT_ADDR,
             "gain": DEFAULT_GAIN,
             "avg": DEFAULT_AVG,
-            "dry_v": DEFAULT_DRY_V,
-            "wet_v": DEFAULT_WET_V,
-            # This is now a voltage threshold in V
-            "thresh_pct": DEFAULT_THRESH,
+            # Now treated purely as a voltage threshold in V
+            "thresh_v": DEFAULT_THRESH,
             "hz": DEFAULT_HZ,
             "dir": DEFAULT_DIR,
             "vote_k": DEFAULT_VOTE_K,
@@ -124,6 +118,7 @@ def get_config():
 
 
 # ---------- Pump endpoints ----------
+
 
 @app.post("/pump/run-seconds")
 def api_run_pump_seconds(req: PumpSecondsRequest):
@@ -139,7 +134,7 @@ def api_run_pump_seconds(req: PumpSecondsRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    
+
 @app.post("/pump/run-multi-seconds")
 def api_run_pumps_seconds(req: PumpMultiSecondsRequest):
     # validate pump names
@@ -204,6 +199,7 @@ def api_set_calibration(req: PumpCalibrationUpdate):
 
 # ---------- Sensors endpoint ----------
 
+
 @app.post("/sensors/read")
 def api_sensors(req: SensorsRequest):
     try:
@@ -213,9 +209,6 @@ def api_sensors(req: SensorsRequest):
             samples=req.samples,
             interval=req.interval,
             avg=req.avg,
-            dry_v=req.dry_v,
-            wet_v=req.wet_v,
-            thresh_pct=req.thresh_pct,
             use_digital=req.use_digital,
             do_pin=req.do_pin,
             invert_do=req.invert_do,
@@ -224,7 +217,8 @@ def api_sensors(req: SensorsRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ---------- Control cycle endpoint ----------
+# ---------- Control cycle endpoints ----------
+
 
 @app.post("/control/cycle-once")
 def api_control_cycle(req: ControlCycleRequest):
@@ -241,11 +235,10 @@ def api_control_cycle(req: ControlCycleRequest):
             addr=req.addr,
             gain=req.gain,
             avg=req.avg,
-            dry_v=req.dry_v,
-            wet_v=req.wet_v,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/control/run-continuous")
 def api_control_run_continuous(req: ControlCycleRequest):
@@ -263,9 +256,7 @@ def api_control_run_continuous(req: ControlCycleRequest):
         addr=req.addr,
         gain=req.gain,
         avg=req.avg,
-        dry_v=req.dry_v,
-        wet_v=req.wet_v,
-        loop_interval=DEFAULT_COOLDOWN_S,  # or req-specific if you add it
+        loop_interval=DEFAULT_COOLDOWN_S,
     )
 
     # Practically never reached
@@ -275,4 +266,5 @@ def api_control_run_continuous(req: ControlCycleRequest):
 # Uvicorn entrypoint (optional)
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("backend.api:app", host="0.0.0.0", port=8000, reload=True)

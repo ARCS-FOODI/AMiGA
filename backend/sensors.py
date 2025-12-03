@@ -16,20 +16,9 @@ from .settings import (
     DEFAULT_GAIN,
     DEFAULT_AVG,
     DEFAULT_INTSEC,
-    DEFAULT_DRY_V,
-    DEFAULT_WET_V,
-    DEFAULT_THRESH,
     DEFAULT_DO_PIN,
     CHIP,
 )
-
-
-def v_to_pct(v: float, dry_v: float, wet_v: float) -> float:
-    """Map voltage to 0–100% (dry→0, wet→100)."""
-    if dry_v == wet_v:
-        return 0.0
-    pct = (dry_v - v) / (dry_v - wet_v) * 100.0
-    return max(0.0, min(100.0, pct))
 
 
 def open_digital_gpio(do_pin: int, chip: int = CHIP):
@@ -87,31 +76,33 @@ def snapshot_sensors(
     samples: int = 1,
     interval: float = DEFAULT_INTSEC,
     avg: int = DEFAULT_AVG,
-    dry_v: float = DEFAULT_DRY_V,
-    wet_v: float = DEFAULT_WET_V,
-    thresh_pct: float = DEFAULT_THRESH,
     use_digital: bool = False,
     do_pin: int = DEFAULT_DO_PIN,
     invert_do: bool = False,
 ) -> Dict[str, Any]:
     """
     Take one or more sensor snapshots and return structured data for the UI.
+
+    NOTE: Voltage-only API:
+      - readings[i]["voltages"] : list of 4 voltages
+      - readings[i]["do_state"] : "WET"/"DRY"/None (if DO enabled)
     """
     _, chans = init_ads(addr, gain)
     handle = open_digital_gpio(do_pin) if use_digital else None
     readings: List[Dict[str, Any]] = []
+
     try:
         for i in range(1, samples + 1):
             volts = read_four_channels(chans, avg)
-            pcts = [v_to_pct(v, dry_v, wet_v) for v in volts]
             do_state = read_do_state(handle, do_pin, invert_do)
-            readings.append({
-                "index": i,
-                "voltages": volts,
-                "moisture_pct": pcts,
-                "do_state": do_state,
-                "timestamp": time.time(),
-            })
+            readings.append(
+                {
+                    "index": i,
+                    "voltages": volts,
+                    "do_state": do_state,
+                    "timestamp": time.time(),
+                }
+            )
             if i < samples:
                 time.sleep(interval)
     finally:
@@ -120,8 +111,5 @@ def snapshot_sensors(
     return {
         "addr": addr,
         "gain": gain,
-        "dry_v": dry_v,
-        "wet_v": wet_v,
-        "thresh_pct": thresh_pct,
         "readings": readings,
     }

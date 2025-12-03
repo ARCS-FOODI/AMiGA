@@ -1,4 +1,3 @@
-# backend/api.py
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
@@ -79,6 +78,7 @@ class SensorsRequest(BaseModel):
     avg: int = Field(DEFAULT_AVG, ge=1)
     dry_v: float = DEFAULT_DRY_V
     wet_v: float = DEFAULT_WET_V
+    # NOTE: now treated as a voltage threshold in V for UI purposes
     thresh_pct: float = DEFAULT_THRESH
     use_digital: bool = False
     do_pin: int = DEFAULT_DO_PIN
@@ -87,7 +87,8 @@ class SensorsRequest(BaseModel):
 
 class ControlCycleRequest(BaseModel):
     pump: str = Field("water")
-    target_threshold: float = 40.0
+    # Now interpreted as a **voltage** threshold (V), default 1.5
+    target_threshold: float = 1.5
     vote_k: int = DEFAULT_VOTE_K
     hz: float = DEFAULT_HZ
     irrigate_seconds: float = DEFAULT_IRR_SEC
@@ -111,6 +112,7 @@ def get_config():
             "avg": DEFAULT_AVG,
             "dry_v": DEFAULT_DRY_V,
             "wet_v": DEFAULT_WET_V,
+            # This is now a voltage threshold in V
             "thresh_pct": DEFAULT_THRESH,
             "hz": DEFAULT_HZ,
             "dir": DEFAULT_DIR,

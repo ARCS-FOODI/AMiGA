@@ -23,8 +23,8 @@ DEFAULT_GAIN   = 1          # ±4.096 V
 DEFAULT_AVG    = 5
 DEFAULT_INTSEC = 1.0
 DEFAULT_SAMPLES= 30
-DEFAULT_DRY_V  = 2.00
-DEFAULT_WET_V  = 0.60
+DEFAULT_DRY_V  = 3.30
+DEFAULT_WET_V  = 0.00
 # Now interpreted as a **voltage** threshold in volts
 DEFAULT_THRESH = 1.50       # V threshold for irrigation logic
 DEFAULT_DO_PIN = 6          # optional digital wet/dry

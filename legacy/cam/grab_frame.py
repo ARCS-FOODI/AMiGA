@@ -13,8 +13,8 @@ if not cap.isOpened():
 # Force YUYV (uncompressed) at 720x480 @ 30fps
 fourcc = cv2.VideoWriter_fourcc(*"YUYV")
 cap.set(cv2.CAP_PROP_FOURCC, fourcc)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 720)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 cap.set(cv2.CAP_PROP_FPS, 30)
 
 print("After set():")

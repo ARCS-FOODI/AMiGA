@@ -22,13 +22,15 @@ print("  Width :", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 print("  Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print("  FPS   :", cap.get(cv2.CAP_PROP_FPS))
 
-# Warm-up: first frames are often garbage/green
-for i in range(30):
+# ---- 5 second warmup ----
+start = time.time()
+i = 0
+while time.time() - start < 5.0:
     ret, frame = cap.read()
     print(f"warmup {i}: ret={ret}")
+    i += 1
     if not ret:
         time.sleep(0.05)
-        continue
 
 # Grab one real frame
 ret, frame = cap.read()

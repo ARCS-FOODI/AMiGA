@@ -2,43 +2,47 @@ import cv2
 import time
 from datetime import datetime
 
-DEVICE_INDEX = 0  # adjust if needed
+DEVICE_INDEX = 0  # /dev/video0
 
 cap = cv2.VideoCapture(DEVICE_INDEX, cv2.CAP_V4L2)
 
-# Try SD NTSC-ish first
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 720)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-cap.set(cv2.CAP_PROP_FPS, 30)
+if not cap.isOpened():
+    raise RuntimeError("Could not open /dev/video0")
 
-# If MJPEG is listed in v4l2-ctl, this makes life easier:
+# Ask for MJPEG at 1280x720 @ 30fps
 fourcc = cv2.VideoWriter_fourcc(*"MJPG")
 cap.set(cv2.CAP_PROP_FOURCC, fourcc)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+cap.set(cv2.CAP_PROP_FPS, 30)
 
-if not cap.isOpened():
-    raise RuntimeError("Could not open video device")
+print("After set():")
+print("  Width :", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+print("  Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+print("  FPS   :", cap.get(cv2.CAP_PROP_FPS))
 
-print("Width:", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-print("Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-print("FPS:", cap.get(cv2.CAP_PROP_FPS))
-
-# Warm up - throw away initial junk frames
+# Warm-up: the first frames are often garbage/green
 for i in range(30):
     ret, frame = cap.read()
+    print(f"warmup {i}: ret={ret}")
     if not ret:
-        print("No frame", i)
+        time.sleep(0.05)
         continue
-    time.sleep(0.05)
 
-# Now grab a real frame
+# Try to grab a real frame
 ret, frame = cap.read()
-if not ret:
-    raise RuntimeError("Still no valid frame")
+print("Final read: ret=", ret)
 
-print("Frame shape:", frame.shape, "mean:", frame.mean())
+if not ret or frame is None:
+    cap.release()
+    raise RuntimeError("read() failed: no valid frame returned")
+
+print("Frame type :", type(frame))
+print("Frame shape:", frame.shape)
+print("Frame mean :", frame.mean())
 
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-fname = f"swann_debug_{ts}.png"
+fname = f"capture_{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}_{ts}.png"
 cv2.imwrite(fname, frame)
 print("Saved", fname)
 

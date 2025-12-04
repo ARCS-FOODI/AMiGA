@@ -4,16 +4,17 @@ from datetime import datetime
 
 DEVICE_INDEX = 0  # /dev/video0
 
+# Open using V4L2 backend
 cap = cv2.VideoCapture(DEVICE_INDEX, cv2.CAP_V4L2)
 
 if not cap.isOpened():
     raise RuntimeError("Could not open /dev/video0")
 
-# Ask for MJPEG at 1280x720 @ 30fps
-fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+# Force YUYV (uncompressed) at 720x480 @ 30fps
+fourcc = cv2.VideoWriter_fourcc(*"YUYV")
 cap.set(cv2.CAP_PROP_FOURCC, fourcc)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 720)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 cap.set(cv2.CAP_PROP_FPS, 30)
 
 print("After set():")
@@ -21,7 +22,7 @@ print("  Width :", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 print("  Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 print("  FPS   :", cap.get(cv2.CAP_PROP_FPS))
 
-# Warm-up: the first frames are often garbage/green
+# Warm-up: first frames are often garbage/green
 for i in range(30):
     ret, frame = cap.read()
     print(f"warmup {i}: ret={ret}")
@@ -29,9 +30,9 @@ for i in range(30):
         time.sleep(0.05)
         continue
 
-# Try to grab a real frame
+# Grab one real frame
 ret, frame = cap.read()
-print("Final read: ret=", ret)
+print("Final read: ret =", ret)
 
 if not ret or frame is None:
     cap.release()

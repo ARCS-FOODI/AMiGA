@@ -35,5 +35,5 @@ DEFAULT_DIR    = "forward"
 
 # Full scenario defaults
 DEFAULT_VOTE_K      = 2     # need at least K of 4 over threshold
-DEFAULT_COOLDOWN_S  = 10.0  # wait after an irrigation cycle
+DEFAULT_COOLDOWN_S  = 30.0  # wait after an irrigation cycle
 DEFAULT_IRR_SEC     = 5.0   # seconds to run pump when triggered

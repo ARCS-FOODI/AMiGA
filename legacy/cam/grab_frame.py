@@ -1,28 +1,44 @@
 import cv2
+import time
 from datetime import datetime
 
-# change 0 -> 1,2,... if it's not the first /dev/video device
-DEVICE_INDEX = 0
+DEVICE_INDEX = 0  # adjust if needed
 
 cap = cv2.VideoCapture(DEVICE_INDEX, cv2.CAP_V4L2)
 
-# Ask for 1080p @ 30fps (the driver may clamp this)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+# Try SD NTSC-ish first
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 720)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 cap.set(cv2.CAP_PROP_FPS, 30)
+
+# If MJPEG is listed in v4l2-ctl, this makes life easier:
+fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+cap.set(cv2.CAP_PROP_FOURCC, fourcc)
 
 if not cap.isOpened():
     raise RuntimeError("Could not open video device")
 
+print("Width:", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+print("Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+print("FPS:", cap.get(cv2.CAP_PROP_FPS))
+
+# Warm up - throw away initial junk frames
+for i in range(30):
+    ret, frame = cap.read()
+    if not ret:
+        print("No frame", i)
+        continue
+    time.sleep(0.05)
+
+# Now grab a real frame
 ret, frame = cap.read()
 if not ret:
-    raise RuntimeError("Could not read frame from camera")
+    raise RuntimeError("Still no valid frame")
 
-print("Frame shape:", frame.shape)  # (height, width, channels)
+print("Frame shape:", frame.shape, "mean:", frame.mean())
 
-# Save a debug PNG so you can confirm it's working
 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-fname = f"frame_{ts}.png"
+fname = f"swann_debug_{ts}.png"
 cv2.imwrite(fname, frame)
 print("Saved", fname)
 

@@ -1,0 +1,21 @@
+import RPi.GPIO as GPIO
+import time
+
+PIN = 26  # BCM numbering
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(PIN, GPIO.OUT)
+
+try:
+    # Turn relay ON (set pin HIGH)
+    GPIO.output(PIN, GPIO.HIGH)
+    print("Relay ON")
+    time.sleep(2)
+
+    # Turn relay OFF (set pin LOW)
+    GPIO.output(PIN, GPIO.LOW)
+    print("Relay OFF")
+    time.sleep(2)
+
+finally:
+    GPIO.cleanup()

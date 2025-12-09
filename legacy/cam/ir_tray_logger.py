@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+import os
 import cv2
 import numpy as np
 import datetime as dt
 import csv
 from pathlib import Path
 import time
+
+os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 # ===== CONFIG =====
 SOURCE = 0                 # camera index or RTSP URL
@@ -15,10 +18,10 @@ COLS = 4
 OUTPUT_CSV = "tray_ir_grid_stats.csv"
 
 # Your crop fractions (top, bottom, left, right)
-CROP_TOP_FRAC = 0.18
-CROP_BOTTOM_FRAC = 0.75
-CROP_LEFT_FRAC = 0.29
-CROP_RIGHT_FRAC = 0.62
+CROP_TOP_FRAC = 0.187
+CROP_BOTTOM_FRAC = 0.74
+CROP_LEFT_FRAC = 0.295
+CROP_RIGHT_FRAC = 0.615
 
 # Show window with grid overlay + means for debugging
 # Set to False for long-term runs to save CPU

@@ -1,82 +1,35 @@
 #!/usr/bin/env python3
-"""
-IR tray logger (hard-coded config)
-
-- Opens a video source (USB capture card, DVR, etc.)
-- Every N seconds:
-    * grabs one frame
-    * converts to grayscale
-    * crops to the tray area
-    * divides it into a grid (ROWS x COLS)
-    * computes mean + std intensity per cell
-    * appends results to a CSV file
-
-Just edit the CONFIG section below to match your setup.
-"""
-
-import csv
-import datetime as dt
-import signal
-import sys
-import time
-from pathlib import Path
-
 import cv2
 import numpy as np
+import datetime as dt
+import csv
+from pathlib import Path
+import time
 
-# =========================
-# CONFIG – EDIT THESE
-# =========================
+# ===== CONFIG =====
+SOURCE = 0          # camera index or RTSP URL
+INTERVAL_SECONDS = 10.0  # seconds between logs
 
-# Video source:
-#   - For local capture card: 0 or 1, etc.
-#   - For RTSP stream: "rtsp://user:pass@ip:554/your_stream"
-SOURCE = 0  # or "rtsp://..."
-
-# How often to log (seconds between captures)
-INTERVAL_SECONDS = 60.0  # e.g. 60 = once per minute
-
-# Grid over the tray
 ROWS = 4
 COLS = 4
-
-# Output CSV path
 OUTPUT_CSV = "tray_ir_grid_stats.csv"
 
-# Crop as FRACTIONS of the full frame (0.0–1.0)
-# Tune these by using PREVIEW_MODE = True first
-CROP_TOP_FRAC = 0.15
-CROP_BOTTOM_FRAC = 0.90
-CROP_LEFT_FRAC = 0.20
-CROP_RIGHT_FRAC = 0.80
+# Your crop fractions (top, bottom, left, right)
+CROP_TOP_FRAC = 0.18
+CROP_BOTTOM_FRAC = 0.75
+CROP_LEFT_FRAC = 0.29
+CROP_RIGHT_FRAC = 0.62
 
-# Set to True to show live preview with crop+grid (no logging)
-# Set to False to actually log to CSV
-PREVIEW_MODE = True  # change to False when ready to log
+# Show window with grid overlay + means for debugging
+SHOW_WINDOW = True   # set to False for maximum performance
+# ==================
 
-# =========================
-# END CONFIG
-# =========================
-
-STOP_REQUESTED = False
-
-
-def handle_sigint(signum, frame):
-    global STOP_REQUESTED
-    STOP_REQUESTED = True
-    print("\n[INFO] Stop requested, finishing current iteration...")
-
-
-signal.signal(signal.SIGINT, handle_sigint)
-
-
-def compute_grid_stats(tray_gray: np.ndarray, rows: int, cols: int):
-    """Compute mean and std intensity for each cell in a rows x cols grid."""
+def compute_grid_stats(tray_gray, rows, cols):
     h, w = tray_gray.shape
     cell_h = h // rows
     cell_w = w // cols
+    stats = []
 
-    results = []
     for r in range(rows):
         for c in range(cols):
             y_start = r * cell_h
@@ -87,87 +40,69 @@ def compute_grid_stats(tray_gray: np.ndarray, rows: int, cols: int):
             cell = tray_gray[y_start:y_end, x_start:x_end]
             mean_intensity = float(cell.mean())
             std_intensity = float(cell.std())
+            stats.append((r, c, mean_intensity, std_intensity))
 
-            results.append(
-                {
-                    "row": r,
-                    "col": c,
-                    "mean_intensity": mean_intensity,
-                    "std_intensity": std_intensity,
-                }
-            )
-    return results
-
-
-def open_capture(source):
-    if isinstance(source, int):
-        cap = cv2.VideoCapture(source)
-    else:
-        # if it's a string like "0", try to cast to int
-        if isinstance(source, str) and source.isdigit():
-            cap = cv2.VideoCapture(int(source))
-        else:
-            cap = cv2.VideoCapture(source)
-
-    if not cap.isOpened():
-        print(f"[ERROR] Could not open video source: {source}")
-        sys.exit(1)
-    return cap
-
+    return stats
 
 def main():
-    cap = open_capture(SOURCE)
+    cap = cv2.VideoCapture(SOURCE)
+    if not cap.isOpened():
+        print("Could not open video source")
+        return
+
+    # Try to set lower resolution if requested (helps performance)
+    if TARGET_WIDTH is not None and TARGET_HEIGHT is not None:
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
 
     out_path = Path(OUTPUT_CSV)
-    csv_file = None
-    writer = None
+    file_exists = out_path.exists()
+    f = out_path.open("a", newline="")
+    writer = csv.writer(f)
+    if not file_exists:
+        writer.writerow(["timestamp", "frame", "row", "col", "mean", "std"])
 
-    if not PREVIEW_MODE:
-        file_exists = out_path.exists()
-        csv_file = out_path.open("a", newline="")
-        writer = csv.writer(csv_file)
-        if not file_exists:
-            writer.writerow(
-                [
-                    "timestamp_iso",
-                    "frame_index",
-                    "row",
-                    "col",
-                    "mean_intensity",
-                    "std_intensity",
-                ]
-            )
+    frame_idx = 0
 
-    frame_index = 0
-    print(
-        "[INFO] Starting "
-        + ("PREVIEW mode." if PREVIEW_MODE else "LOGGING mode.")
-        + " Press Ctrl+C to stop."
-    )
+    print("Starting IR tray logger. Press ESC in window or Ctrl+C in terminal to stop.")
 
     try:
-        while not STOP_REQUESTED:
+        while True:
+            t0 = time.time()
+
             ret, frame = cap.read()
             if not ret:
-                print("[WARN] Could not read frame from camera.")
-                time.sleep(1.0)
-                continue
+                print("No frame")
+                break
 
-            frame_index += 1
+            frame_idx += 1
 
+            # Convert to gray
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             h, w = gray.shape
 
-            # Compute crop region in pixels
+            # Crop to tray (your fractions)
             y1 = int(CROP_TOP_FRAC * h)
             y2 = int(CROP_BOTTOM_FRAC * h)
             x1 = int(CROP_LEFT_FRAC * w)
             x2 = int(CROP_RIGHT_FRAC * w)
-
             tray = gray[y1:y2, x1:x2]
 
-            if PREVIEW_MODE:
-                # Show crop and grid overlay
+            stats = compute_grid_stats(tray, ROWS, COLS)
+            ts = dt.datetime.now().isoformat()
+
+            # Log to CSV
+            for (r, c, m, s) in stats:
+                writer.writerow([ts, frame_idx, r, c, f"{m:.6f}", f"{s:.6f}"])
+            f.flush()
+
+            print(
+                f"Frame {frame_idx} | first cell mean/std: "
+                f"{stats[0][2]:.2f}/{stats[0][3]:.2f}"
+            )
+
+            # Optional window with overlay (for debugging)
+            if SHOW_WINDOW:
                 vis = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
                 cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
@@ -175,7 +110,7 @@ def main():
                 cell_h = tray_h // ROWS
                 cell_w = tray_w // COLS
 
-                # Draw grid
+                # grid lines
                 for r in range(1, ROWS):
                     y = y1 + r * cell_h
                     cv2.line(vis, (x1, y), (x2, y), (0, 255, 0), 1)
@@ -183,44 +118,39 @@ def main():
                     x = x1 + c * cell_w
                     cv2.line(vis, (x, y1), (x, y2), (0, 255, 0), 1)
 
-                cv2.imshow("IR Tray Preview", vis)
-                key = cv2.waitKey(30) & 0xFF
-                if key == 27:  # Esc
+                # mean labels
+                for (r, c, m, s) in stats:
+                    yc = int(y1 + (r + 0.5) * cell_h)
+                    xc = int(x1 + (c + 0.5) * cell_w)
+                    text = f"{m:.0f}"
+                    cv2.putText(
+                        vis,
+                        text,
+                        (xc - 20, yc),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 255, 255),
+                        1,
+                        cv2.LINE_AA,
+                    )
+
+                cv2.imshow("IR tray with means", vis)
+                key = cv2.waitKey(1) & 0xFF
+                if key == 27:  # ESC
                     break
 
-                continue  # loop again, no logging
-
-            # Logging mode
-            stats = compute_grid_stats(tray, ROWS, COLS)
-            timestamp_iso = dt.datetime.now().isoformat()
-
-            for cell in stats:
-                writer.writerow(
-                    [
-                        timestamp_iso,
-                        frame_index,
-                        cell["row"],
-                        cell["col"],
-                        f"{cell['mean_intensity']:.6f}",
-                        f"{cell['std_intensity']:.6f}",
-                    ]
-                )
-
-            csv_file.flush()
-            print(
-                f"[INFO] Logged frame {frame_index} at {timestamp_iso} "
-                f"(first cell mean: {stats[0]['mean_intensity']:.2f})"
-            )
-
-            time.sleep(INTERVAL_SECONDS)
+            # Sleep so loop period ~ INTERVAL_SECONDS
+            elapsed = time.time() - t0
+            to_sleep = INTERVAL_SECONDS - elapsed
+            if to_sleep > 0:
+                time.sleep(to_sleep)
 
     finally:
         cap.release()
-        cv2.destroyAllWindows()
-        if csv_file is not None:
-            csv_file.close()
-        print("[INFO] Capture stopped, resources released.")
-
+        f.close()
+        if SHOW_WINDOW:
+            cv2.destroyAllWindows()
+        print("Stopped IR tray logger.")
 
 if __name__ == "__main__":
     main()

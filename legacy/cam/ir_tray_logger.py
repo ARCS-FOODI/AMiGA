@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 import os
+
+# Force Qt to use X11 (xcb) instead of Wayland BEFORE importing cv2
+os.environ["QT_QPA_PLATFORM"] = "xcb"
+
 import cv2
 import numpy as np
 import datetime as dt
@@ -7,7 +11,21 @@ import csv
 from pathlib import Path
 import time
 
-os.environ["QT_QPA_PLATFORM"] = "xcb"
+# ===== PATHS (based on this file location) =====
+# This file is at: AMIGA/legacy/cam/ir_tray_logger.py
+this_file = Path(__file__).resolve()
+base_dir = this_file.parents[2]          # -> AMIGA/
+
+PICS_DIR = base_dir / "data" / "ir_pics"
+CSV_DIR = base_dir / "data" / "ir_pics_csv"
+
+# Make sure directories exist
+PICS_DIR.mkdir(parents=True, exist_ok=True)
+CSV_DIR.mkdir(parents=True, exist_ok=True)
+
+# CSV file path
+OUTPUT_CSV = CSV_DIR / "tray_ir_grid_stats.csv"
+# ==============================================
 
 # ===== CONFIG =====
 SOURCE = 0                 # camera index or RTSP URL
@@ -15,7 +33,6 @@ INTERVAL_SECONDS = 10.0    # seconds between logs
 
 ROWS = 4
 COLS = 4
-OUTPUT_CSV = "tray_ir_grid_stats.csv"
 
 # Your crop fractions (top, bottom, left, right)
 CROP_TOP_FRAC = 0.187
@@ -66,12 +83,11 @@ def main():
         cap.read()
     print("Warmup complete, starting logging.")
 
-    out_path = Path(OUTPUT_CSV)
-    file_exists = out_path.exists()
-    f = out_path.open("a", newline="")
+    file_exists = OUTPUT_CSV.exists()
+    f = OUTPUT_CSV.open("a", newline="")
     writer = csv.writer(f)
     if not file_exists:
-        writer.writerow(["timestamp", "frame", "row", "col", "mean", "std"])
+        writer.writerow(["timestamp", "frame", "row", "col", "mean", "std", "image_path"])
 
     frame_idx = 0
 
@@ -98,16 +114,25 @@ def main():
             tray = gray[y1:y2, x1:x2]
 
             stats = compute_grid_stats(tray, ROWS, COLS)
-            ts = dt.datetime.now().isoformat()
 
-            # Log to CSV
+            # Timestamp for CSV and filename
+            ts = dt.datetime.now()
+            ts_iso = ts.isoformat()
+            ts_safe = ts.strftime("%Y%m%d_%H%M%S")
+
+            # Save cropped tray image
+            img_name = f"ir_{ts_safe}_f{frame_idx:06d}.png"
+            img_path = PICS_DIR / img_name
+            cv2.imwrite(str(img_path), tray)
+
+            # Log to CSV (include image path)
             for (r, c, m, s) in stats:
-                writer.writerow([ts, frame_idx, r, c, f"{m:.6f}", f"{s:.6f}"])
+                writer.writerow([ts_iso, frame_idx, r, c, f"{m:.6f}", f"{s:.6f}", str(img_path)])
             f.flush()
 
             print(
                 f"Frame {frame_idx} | first cell mean/std: "
-                f"{stats[0][2]:.2f}/{stats[0][3]:.2f}"
+                f"{stats[0][2]:.2f}/{stats[0][3]:.2f} | saved {img_name}"
             )
 
             # Optional on-screen preview

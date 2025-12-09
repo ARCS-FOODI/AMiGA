@@ -50,11 +50,6 @@ def main():
         print("Could not open video source")
         return
 
-    # Try to set lower resolution if requested (helps performance)
-    if TARGET_WIDTH is not None and TARGET_HEIGHT is not None:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
-
     out_path = Path(OUTPUT_CSV)
     file_exists = out_path.exists()
     f = out_path.open("a", newline="")

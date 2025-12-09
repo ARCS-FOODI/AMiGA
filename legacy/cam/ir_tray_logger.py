@@ -7,8 +7,8 @@ from pathlib import Path
 import time
 
 # ===== CONFIG =====
-SOURCE = 0          # camera index or RTSP URL
-INTERVAL_SECONDS = 10.0  # seconds between logs
+SOURCE = 0                 # camera index or RTSP URL
+INTERVAL_SECONDS = 10.0    # seconds between logs
 
 ROWS = 4
 COLS = 4
@@ -21,8 +21,10 @@ CROP_LEFT_FRAC = 0.29
 CROP_RIGHT_FRAC = 0.62
 
 # Show window with grid overlay + means for debugging
-SHOW_WINDOW = True   # set to False for maximum performance
+# Set to False for long-term runs to save CPU
+SHOW_WINDOW = True
 # ==================
+
 
 def compute_grid_stats(tray_gray, rows, cols):
     h, w = tray_gray.shape
@@ -44,11 +46,22 @@ def compute_grid_stats(tray_gray, rows, cols):
 
     return stats
 
+
 def main():
     cap = cv2.VideoCapture(SOURCE)
     if not cap.isOpened():
         print("Could not open video source")
         return
+
+    # Optional: keep buffer small so we always get "latest" frame
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+    # --- Warm up camera for 2 seconds ---
+    print("Warming up camera for 2 seconds...")
+    warmup_end = time.time() + 2.0
+    while time.time() < warmup_end:
+        cap.read()
+    print("Warmup complete, starting logging.")
 
     out_path = Path(OUTPUT_CSV)
     file_exists = out_path.exists()
@@ -59,11 +72,9 @@ def main():
 
     frame_idx = 0
 
-    print("Starting IR tray logger. Press ESC in window or Ctrl+C in terminal to stop.")
-
     try:
         while True:
-            t0 = time.time()
+            loop_start = time.time()
 
             ret, frame = cap.read()
             if not ret:
@@ -72,11 +83,11 @@ def main():
 
             frame_idx += 1
 
-            # Convert to gray
+            # Convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             h, w = gray.shape
 
-            # Crop to tray (your fractions)
+            # Crop to tray
             y1 = int(CROP_TOP_FRAC * h)
             y2 = int(CROP_BOTTOM_FRAC * h)
             x1 = int(CROP_LEFT_FRAC * w)
@@ -96,7 +107,7 @@ def main():
                 f"{stats[0][2]:.2f}/{stats[0][3]:.2f}"
             )
 
-            # Optional window with overlay (for debugging)
+            # Optional on-screen preview
             if SHOW_WINDOW:
                 vis = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
                 cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -134,11 +145,11 @@ def main():
                 if key == 27:  # ESC
                     break
 
-            # Sleep so loop period ~ INTERVAL_SECONDS
-            elapsed = time.time() - t0
-            to_sleep = INTERVAL_SECONDS - elapsed
-            if to_sleep > 0:
-                time.sleep(to_sleep)
+            # Keep loop period ~ INTERVAL_SECONDS
+            elapsed = time.time() - loop_start
+            sleep_for = INTERVAL_SECONDS - elapsed
+            if sleep_for > 0:
+                time.sleep(sleep_for)
 
     finally:
         cap.release()
@@ -146,6 +157,7 @@ def main():
         if SHOW_WINDOW:
             cv2.destroyAllWindows()
         print("Stopped IR tray logger.")
+
 
 if __name__ == "__main__":
     main()

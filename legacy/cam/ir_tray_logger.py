@@ -29,7 +29,7 @@ OUTPUT_CSV = CSV_DIR / "tray_ir_grid_stats.csv"
 
 # ===== CONFIG =====
 SOURCE = 0                 # camera index or RTSP URL
-INTERVAL_SECONDS = 10.0    # seconds between logs
+INTERVAL_SECONDS = 120.0    # seconds between logs
 
 ROWS = 4
 COLS = 4

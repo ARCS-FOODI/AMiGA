@@ -1,24 +1,23 @@
 import lgpio
 import time
 
-CHIP = 0        # default GPIO chip on Raspberry Pi
-PIN = 26        # BCM GPIO number for the relay
+CHIP = 0           # default GPIO chip
+RELAY_PIN = 26     # BCM 26 (physical pin 37)
 
 # Open the GPIO chip
 h = lgpio.gpiochip_open(CHIP)
 
 try:
-    # Claim the pin as an output, default LOW (0)
-    lgpio.gpio_claim_output(h, PIN, 0)
+    # Make GPIO26 an output, start LOW (relay OFF)
+    lgpio.gpio_claim_output(h, RELAY_PIN, 0)
 
     print("Relay ON (GPIO 26 HIGH)")
-    lgpio.gpio_write(h, PIN, 1)   # set HIGH
+    lgpio.gpio_write(h, RELAY_PIN, 1)   # HIGH = relay ON
     time.sleep(2)
 
     print("Relay OFF (GPIO 26 LOW)")
-    lgpio.gpio_write(h, PIN, 0)   # set LOW
+    lgpio.gpio_write(h, RELAY_PIN, 0)   # LOW = relay OFF
     time.sleep(2)
 
 finally:
-    # Always close the chip handle
     lgpio.gpiochip_close(h)

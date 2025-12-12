@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Dict, Any
+import time
 
 import lgpio
 
@@ -90,3 +91,14 @@ def toggle_light(handle: int) -> Dict[str, Any]:
         "light_pin": LIGHT_PIN,
         "on": _LIGHT_STATE,
     }
+
+
+def set_light_after_delay(on: bool, delay: float) -> None:
+    """
+    Sleep for `delay` seconds, then set the light state.
+
+    Intended to be used from a FastAPI BackgroundTask so the API call
+    returns immediately while this runs in a worker thread.
+    """
+    time.sleep(delay)
+    set_light(on)

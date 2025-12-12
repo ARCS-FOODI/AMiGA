@@ -5,6 +5,7 @@ from typing import Dict, Any
 import time
 import csv
 from pathlib import Path
+from datetime import datetime
 
 from .settings import (
     DEFAULT_ADDR,
@@ -35,7 +36,7 @@ def _ensure_log_file_has_header() -> None:
             writer = csv.writer(f)
             writer.writerow(
                 [
-                    "timestamp",
+                    "timestamp",             # ISO 8601 string
                     "pump",
                     "target_threshold_v",
                     "vote_k",
@@ -62,7 +63,9 @@ def _log_control_cycle_to_csv(result: Dict[str, Any]) -> None:
     """
     _ensure_log_file_has_header()
 
-    ts = time.time()
+    # ISO 8601 timestamp with timezone for log rows
+    ts = datetime.now().astimezone().isoformat()
+
     pump = result.get("pump")
     target_threshold = result.get("target_threshold")
     vote_k = result.get("vote_k")

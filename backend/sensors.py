@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 import statistics
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 import board
 import busio
@@ -86,6 +87,7 @@ def snapshot_sensors(
     NOTE: Voltage-only API:
       - readings[i]["voltages"] : list of 4 voltages
       - readings[i]["do_state"] : "WET"/"DRY"/None (if DO enabled)
+      - readings[i]["timestamp"]: ISO 8601 timestamp string
     """
     _, chans = init_ads(addr, gain)
     handle = open_digital_gpio(do_pin) if use_digital else None
@@ -100,7 +102,8 @@ def snapshot_sensors(
                     "index": i,
                     "voltages": volts,
                     "do_state": do_state,
-                    "timestamp": time.time(),
+                    # ISO 8601 with timezone, e.g. 2025-12-12T14:30:05.123456-08:00
+                    "timestamp": datetime.now().astimezone().isoformat(),
                 }
             )
             if i < samples:

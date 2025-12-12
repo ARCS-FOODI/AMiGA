@@ -21,7 +21,7 @@ from .settings import (
     DEFAULT_SAMPLES,
     DEFAULT_COOLDOWN_S,
 )
-from . import sensors, pumps, control, config_store
+from . import sensors, pumps, control, config_store, light
 
 
 app = FastAPI(title="AMiGA Irrigation API")
@@ -93,6 +93,10 @@ class ControlCycleRequest(BaseModel):
     addr: int = DEFAULT_ADDR
     gain: int = DEFAULT_GAIN
     avg: int = DEFAULT_AVG
+
+
+class LightStateRequest(BaseModel):
+    on: bool
 
 
 # ---------- Info endpoints ----------
@@ -261,6 +265,33 @@ def api_control_run_continuous(req: ControlCycleRequest):
 
     # Practically never reached
     return {"status": "stopped"}
+
+
+# ---------- Light endpoints ----------
+
+
+@app.get("/light")
+def api_get_light_state():
+    try:
+        return light.get_light_state()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/light")
+def api_set_light_state(req: LightStateRequest):
+    try:
+        return light.set_light(req.on)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/light/toggle")
+def api_toggle_light():
+    try:
+        return light.toggle_light()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Uvicorn entrypoint (optional)

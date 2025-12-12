@@ -7,6 +7,7 @@ import time
 import lgpio
 
 from .settings import CHIP, LIGHT_PIN
+from . import master_log
 
 # Track the logical state of the light in software.
 # False = OFF, True = ON
@@ -54,6 +55,16 @@ def set_light(handle: int, on: bool) -> Dict[str, Any]:
 
     _LIGHT_STATE = on
 
+    # Log to master.csv
+    try:
+        master_log.log_event(
+            "light_state",
+            source="light.set_light",
+            light_on=on,
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log light_state to master.csv: {e}")
+
     return {
         "light_pin": LIGHT_PIN,
         "on": _LIGHT_STATE,
@@ -86,6 +97,16 @@ def toggle_light(handle: int) -> Dict[str, Any]:
     lgpio.gpio_write(handle, LIGHT_PIN, level)
 
     _LIGHT_STATE = new_state
+
+    # Log to master.csv (optional separate event from direct set_light)
+    try:
+        master_log.log_event(
+            "light_state",
+            source="light.toggle_light",
+            light_on=_LIGHT_STATE,
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log light_state (toggle) to master.csv: {e}")
 
     return {
         "light_pin": LIGHT_PIN,

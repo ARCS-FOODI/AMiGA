@@ -16,7 +16,7 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
 
 # GPIO chip index
 CHIP = 0  # usually /dev/gpiochip0
-
+LIGHT_PIN = 26
 # Sensor defaults
 DEFAULT_ADDR   = 0x48
 DEFAULT_GAIN   = 1          # ±4.096 V

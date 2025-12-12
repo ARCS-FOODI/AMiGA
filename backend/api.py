@@ -1,7 +1,7 @@
 # backend/api.py
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List
@@ -97,6 +97,10 @@ class ControlCycleRequest(BaseModel):
 
 class LightStateRequest(BaseModel):
     on: bool
+
+
+class LightTimedRequest(BaseModel):
+    seconds: float = Field(..., gt=0)
 
 
 # ---------- Info endpoints ----------
@@ -290,6 +294,22 @@ def api_set_light_state(req: LightStateRequest):
 def api_toggle_light():
     try:
         return light.toggle_light()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/light/on-for")
+def api_light_on_for(req: LightTimedRequest, background_tasks: BackgroundTasks):
+    """
+    Turn the light ON immediately, then schedule it to turn OFF after `seconds`.
+    Non-blocking: returns as soon as the schedule is set.
+    """
+    try:
+        # Turn ON now
+        light.set_light(True)
+        # Schedule OFF in the background
+        background_tasks.add_task(light.set_light_after_delay, False, req.seconds)
+        return {"status": "scheduled", "seconds": req.seconds}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

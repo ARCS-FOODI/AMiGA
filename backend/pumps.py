@@ -7,7 +7,7 @@ from typing import Dict, Any
 import lgpio
 
 from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR
-from . import config_store
+from . import config_store, master_log
 
 
 def gpio_setup_outputs(handle: int) -> None:
@@ -117,13 +117,28 @@ def run_pump_seconds(
     finally:
         enable_driver(handle, pump, False)
 
-    return {
+    result = {
         "pump": pump,
         "seconds": seconds,
         "hz": hz,
         "direction": direction,
         "status": "ok",
     }
+
+    # Log to master.csv
+    try:
+        master_log.log_event(
+            "pump_run_seconds",
+            source="pumps.run_pump_seconds",
+            pump=pump,
+            seconds=seconds,
+            hz=hz,
+            direction=direction,
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log pump_run_seconds to master.csv: {e}")
+
+    return result
 
 
 @_with_handle
@@ -148,13 +163,28 @@ def run_pumps_seconds(
         for pump in pumps_list:
             enable_driver(handle, pump, False)
 
-    return {
+    result = {
         "pumps": pumps_list,
         "seconds": seconds,
         "hz": hz,
         "direction": direction,
         "status": "ok",
     }
+
+    # Log to master.csv
+    try:
+        master_log.log_event(
+            "pump_run_multi_seconds",
+            source="pumps.run_pumps_seconds",
+            pumps=",".join(pumps_list),
+            seconds=seconds,
+            hz=hz,
+            direction=direction,
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log pump_run_multi_seconds to master.csv: {e}")
+
+    return result
 
 
 @_with_handle
@@ -174,7 +204,7 @@ def calibrate_pump_seconds(
     finally:
         enable_driver(handle, pump, False)
 
-    return {
+    result = {
         "pump": pump,
         "run_seconds": run_seconds,
         "hz": hz,
@@ -183,6 +213,20 @@ def calibrate_pump_seconds(
             f"POST the measured ml_per_sec to /pump/calibration for '{pump}'."
         ),
     }
+
+    # Log to master.csv
+    try:
+        master_log.log_event(
+            "pump_calibration_run",
+            source="pumps.calibrate_pump_seconds",
+            pump=pump,
+            seconds=run_seconds,
+            hz=hz,
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log pump_calibration_run to master.csv: {e}")
+
+    return result
 
 
 @_with_handle
@@ -210,7 +254,7 @@ def run_pump_ml(
     finally:
         enable_driver(handle, pump, False)
 
-    return {
+    result = {
         "pump": pump,
         "ml": ml,
         "hz": hz,
@@ -219,3 +263,20 @@ def run_pump_ml(
         "seconds": seconds,
         "status": "ok",
     }
+
+    # Log to master.csv
+    try:
+        master_log.log_event(
+            "pump_run_ml",
+            source="pumps.run_pump_ml",
+            pump=pump,
+            ml=ml,
+            seconds=seconds,
+            hz=hz,
+            direction=direction,
+            note=f"rate_ml_per_sec={rate}",
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log pump_run_ml to master.csv: {e}")
+
+    return result

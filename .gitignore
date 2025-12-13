@@ -233,3 +233,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secret Key
+config/amiga-gcp-key.json

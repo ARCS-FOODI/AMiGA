@@ -11,13 +11,15 @@ try:
     # Make GPIO26 an output, start LOW (relay OFF)
     lgpio.gpio_claim_output(h, RELAY_PIN, 0)
 
+    print("Relay OFF (GPIO 26 LOW)")
+    lgpio.gpio_write(h, RELAY_PIN, 0)   # LOW = relay OFF
+    time.sleep(2)
+
     print("Relay ON (GPIO 26 HIGH)")
     lgpio.gpio_write(h, RELAY_PIN, 1)   # HIGH = relay ON
     time.sleep(2)
 
-    print("Relay OFF (GPIO 26 LOW)")
-    lgpio.gpio_write(h, RELAY_PIN, 0)   # LOW = relay OFF
-    time.sleep(2)
+   
 
 finally:
     lgpio.gpiochip_close(h)

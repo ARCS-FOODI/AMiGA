@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 import statistics
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 import board
 import busio
@@ -19,6 +20,7 @@ from .settings import (
     DEFAULT_DO_PIN,
     CHIP,
 )
+from . import master_log
 
 
 def open_digital_gpio(do_pin: int, chip: int = CHIP):
@@ -86,6 +88,7 @@ def snapshot_sensors(
     NOTE: Voltage-only API:
       - readings[i]["voltages"] : list of 4 voltages
       - readings[i]["do_state"] : "WET"/"DRY"/None (if DO enabled)
+      - readings[i]["timestamp"]: ISO 8601 timestamp string
     """
     _, chans = init_ads(addr, gain)
     handle = open_digital_gpio(do_pin) if use_digital else None
@@ -95,14 +98,36 @@ def snapshot_sensors(
         for i in range(1, samples + 1):
             volts = read_four_channels(chans, avg)
             do_state = read_do_state(handle, do_pin, invert_do)
+            ts = datetime.now().astimezone().isoformat()
+
             readings.append(
                 {
                     "index": i,
                     "voltages": volts,
                     "do_state": do_state,
-                    "timestamp": time.time(),
+                    "timestamp": ts,
                 }
             )
+
+            # Log each reading to master.csv
+            try:
+                master_log.log_event(
+                    "sensor_read",
+                    source="sensors.snapshot_sensors",
+                    addr=addr,
+                    gain=gain,
+                    avg=avg,
+                    sample_index=i,
+                    v0=volts[0],
+                    v1=volts[1],
+                    v2=volts[2],
+                    v3=volts[3],
+                    do_state=do_state,
+                    timestamp=ts,
+                )
+            except Exception as e:
+                print(f"[LOG] Failed to log sensor_read to master.csv: {e}")
+
             if i < samples:
                 time.sleep(interval)
     finally:

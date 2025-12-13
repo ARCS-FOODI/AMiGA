@@ -5,6 +5,7 @@ from typing import Dict, Any
 import time
 import csv
 from pathlib import Path
+from datetime import datetime
 
 from .settings import (
     DEFAULT_ADDR,
@@ -17,7 +18,7 @@ from .settings import (
     DEFAULT_COOLDOWN_S,
     DEFAULT_THRESH,  # now interpreted as voltage threshold in V
 )
-from . import sensors, pumps
+from . import sensors, pumps, master_log
 
 # Paths for logging
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,7 +36,7 @@ def _ensure_log_file_has_header() -> None:
             writer = csv.writer(f)
             writer.writerow(
                 [
-                    "timestamp",
+                    "timestamp",             # ISO 8601 string
                     "pump",
                     "target_threshold_v",
                     "vote_k",
@@ -62,7 +63,9 @@ def _log_control_cycle_to_csv(result: Dict[str, Any]) -> None:
     """
     _ensure_log_file_has_header()
 
-    ts = time.time()
+    # ISO 8601 timestamp with timezone for log rows
+    ts = datetime.now().astimezone().isoformat()
+
     pump = result.get("pump")
     target_threshold = result.get("target_threshold")
     vote_k = result.get("vote_k")
@@ -185,10 +188,32 @@ def control_cycle_once(
         "pump_action": pump_action,
     }
 
+    # Legacy CSV log for moisture cycles
     try:
         _log_control_cycle_to_csv(result)
     except Exception as e:
-        print(f"[LOG] Failed to log control cycle to CSV: {e}")
+        print(f"[LOG] Failed to log control cycle to moisture_cycles.csv: {e}")
+
+    # Master log entry
+    try:
+        master_log.log_event(
+            "control_cycle",
+            source="control.control_cycle_once",
+            pump=pump,
+            target_threshold_v=target_threshold,
+            vote_k=vote_k,
+            hz=hz,
+            irrigate_seconds=irrigate_seconds,
+            triggered=triggered,
+            irrigated=irrigated,
+            under_threshold_count=over,
+            v0=before_volts[0],
+            v1=before_volts[1],
+            v2=before_volts[2],
+            v3=before_volts[3],
+        )
+    except Exception as e:
+        print(f"[LOG] Failed to log control_cycle to master.csv: {e}")
 
     return result
 

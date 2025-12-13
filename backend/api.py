@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Literal
 
 from .settings import (
     PUMP_PINS,
@@ -101,6 +101,13 @@ class LightStateRequest(BaseModel):
 
 class LightTimedRequest(BaseModel):
     seconds: float = Field(..., gt=0)
+
+
+class LightConfig(BaseModel):
+    mode: Literal["manual", "daynight"] = "manual"
+    # "HH:MM" or "HH:MM:SS"
+    day_start: str = "19:00"
+    day_end: str = "07:00"
 
 
 # ---------- Info endpoints ----------
@@ -310,6 +317,45 @@ def api_light_on_for(req: LightTimedRequest, background_tasks: BackgroundTasks):
         # Schedule OFF in the background
         background_tasks.add_task(light.set_light_after_delay, False, req.seconds)
         return {"status": "scheduled", "seconds": req.seconds}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/light/config")
+def api_get_light_config():
+    """
+    Get current light mode + day/night window.
+    """
+    try:
+        return light.get_light_config()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/light/config")
+def api_set_light_config(req: LightConfig):
+    """
+    Set light mode and day/night window.
+
+    mode: "manual" or "daynight"
+    day_start/day_end: "HH:MM" or "HH:MM:SS"
+    """
+    try:
+        return light.set_light_config(req.mode, req.day_start, req.day_end)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/light/apply-daynight")
+def api_apply_light_daynight():
+    """
+    Evaluate the day/night rule and, if mode == 'daynight',
+    set the light according to the configured window.
+    """
+    try:
+        return light.apply_daynight_now()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

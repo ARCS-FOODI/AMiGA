@@ -1,0 +1,18 @@
+2025-12-12T17:27:20.845013-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=6:00, day_end=20:00"
+2025-12-12T17:27:22.001344-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=6:00, day_end=20:00"
+2025-12-12T17:27:36.962377-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-12T17:27:37.062921-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2025-12-12T17:27:41.017952-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-12T17:27:41.118374-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2025-12-12T17:28:30.515025-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=8:00, day_end=20:00"
+2025-12-12T17:28:42.902601-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=8:00, day_end=17:00"
+2025-12-12T17:28:47.093877-08:00,light_state,light.set_light,,,,,,,False,,,,,,,,,,,,,,,,
+2025-12-12T17:28:47.194372-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,False,,,,,,,,,,,,,,,,within_window=False
+2025-12-12T17:29:02.428334-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=8:00, day_end=20:00"
+2025-12-12T17:29:06.245384-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-12T17:29:06.345885-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2025-12-12T17:32:34.223606-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=8:00, day_end=22:00"
+2025-12-12T17:32:51.917274-08:00,light_config_set,light.set_light_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=8:00, day_end=22:00"
+2025-12-12T17:32:59.935609-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-12T17:33:00.036296-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2025-12-15T12:20:19.519522-08:00,sensor_read,sensors.snapshot_sensors,,,,,,,,72,1,5,1,3.138925,3.169875,3.1389,3.145075,,,,,,,,

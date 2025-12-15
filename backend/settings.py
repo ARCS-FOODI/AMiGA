@@ -2,12 +2,12 @@ from typing import Dict
 
 # Pump pin maps (BCM numbering)
 PUMP_PINS: Dict[str, Dict[str, int]] = {
-    "water": {      # pump for plain water
-        "STEP": 5,  # was 17 in the single-pump setup
-        "DIR": 6,   # was 27
-        "EN": 13,   # was 22 (EN active LOW)
+    "food": {      # pump for food solution
+        "STEP": 5,  
+        "DIR": 6,   
+        "EN": 13,   
     },
-    "food": {  # pump for food solution
+    "water": {  # pump for water
         "STEP": 17,
         "DIR": 27,
         "EN": 22,

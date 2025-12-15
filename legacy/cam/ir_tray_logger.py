@@ -51,22 +51,23 @@ SHOW_WINDOW = True
 DAY_SAT_THRESHOLD = 15.0  # tweak if needed
 
 # ---- Green detection (HSV mask) ----
-# These work decently for "green plants" under normal lighting.
-# Tune if your greens are not being picked up.
 GREEN_HSV_LOWER = np.array([35, 40, 40], dtype=np.uint8)
 GREEN_HSV_UPPER = np.array([85, 255, 255], dtype=np.uint8)
 
 # ---- Germination detection ----
-# We use mean green_fraction across the whole tray.
-BASELINE_DAY_FRAMES = 10          # first N DAY frames establish baseline
-GREEN_DELTA_TRIGGER = 0.02        # how much above baseline to call "green popped"
-CONSECUTIVE_DAY_HITS = 3          # require K consecutive triggers to reduce noise
+# Absolute trigger: detect a small amount of green (mean green fraction across tray)
+GREEN_MEAN_TRIGGER = 0.005        # 0..1 (0.005 = 0.5% green). CHANGE THIS.
+CONSECUTIVE_DAY_HITS = 3          # require K consecutive day frames to reduce noise
+
+# Optional baseline mode (disabled by default)
+USE_BASELINE = False
+BASELINE_DAY_FRAMES = 10
+GREEN_DELTA_TRIGGER = 0.02
 
 # Optional: save a color crop during day for debugging/QA
 SAVE_COLOR_WHEN_DAY = True
 
 # Optional: webhook to notify another service (your pump controller / FastAPI)
-# Leave as "" to disable.
 GERMINATION_WEBHOOK_URL = ""  # e.g. "http://127.0.0.1:8000/events/germination"
 # ==================
 
@@ -184,17 +185,15 @@ def main():
         ])
 
     # ---- Plant status state machine ----
-    # scientific wording: "pre-germination" -> "germinated"
     plant_status = "pre-germination"
-    status_payload = {
+    write_status({
         "status": plant_status,
         "updated_at": dt.datetime.now().isoformat(),
         "note": "initialized",
-    }
-    write_status(status_payload)
+    })
 
     # ---- Germination detector memory ----
-    baseline_samples = []  # mean green frac across tray for first N DAY frames
+    baseline_samples = []  # used only if USE_BASELINE=True
     baseline_green = None
     consecutive_hits = 0
     germination_detected_at = None
@@ -212,7 +211,6 @@ def main():
 
             frame_idx += 1
 
-            # Convert grayscale (keeps your existing stats behavior)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             h, w = gray.shape
 
@@ -232,15 +230,15 @@ def main():
             # Grayscale grid stats (always)
             gray_stats = compute_grid_stats(tray_gray, ROWS, COLS)
 
-            # Green fractions (day only)
+            # Green fractions + germination (day only)
             green_grid = None
             green_mean = None
             if is_day:
                 green_grid = compute_green_fraction_grid(tray_color, ROWS, COLS)
                 green_mean = float(np.mean([g for (_, _, g) in green_grid]))
 
-                # Build baseline
-                if baseline_green is None:
+                # Optional: baseline build
+                if USE_BASELINE and baseline_green is None:
                     baseline_samples.append(green_mean)
                     if len(baseline_samples) >= BASELINE_DAY_FRAMES:
                         baseline_green = float(np.mean(baseline_samples))
@@ -248,8 +246,18 @@ def main():
                               f"from {BASELINE_DAY_FRAMES} day frames")
 
                 # Germination trigger logic (only once)
-                if plant_status != "germinated" and baseline_green is not None:
-                    if green_mean >= (baseline_green + GREEN_DELTA_TRIGGER):
+                if plant_status != "germinated":
+                    if USE_BASELINE:
+                        # Need baseline before triggering
+                        if baseline_green is not None:
+                            triggered = green_mean >= (baseline_green + GREEN_DELTA_TRIGGER)
+                        else:
+                            triggered = False
+                    else:
+                        # Absolute threshold: detect small amount of green
+                        triggered = green_mean >= GREEN_MEAN_TRIGGER
+
+                    if triggered:
                         consecutive_hits += 1
                     else:
                         consecutive_hits = 0
@@ -265,6 +273,7 @@ def main():
                             "frame": frame_idx,
                             "baseline_green": baseline_green,
                             "green_mean": green_mean,
+                            "green_mean_trigger": GREEN_MEAN_TRIGGER,
                             "mean_saturation": mean_sat,
                             "mode": mode,
                         }
@@ -276,6 +285,7 @@ def main():
                             "updated_at": germination_detected_at,
                             "baseline_green": baseline_green,
                             "green_mean": green_mean,
+                            "green_mean_trigger": GREEN_MEAN_TRIGGER,
                             "mean_saturation": mean_sat,
                             "mode": mode,
                             "frame": frame_idx,
@@ -324,9 +334,10 @@ def main():
 
             # Console preview
             if is_day and green_mean is not None:
+                trig_info = f"thr={GREEN_MEAN_TRIGGER:.4f}" if not USE_BASELINE else f"baseline={baseline_green}"
                 print(f"Frame {frame_idx} | mode={mode} sat={mean_sat:.1f} "
-                      f"green_mean={green_mean:.4f} status={plant_status} "
-                      f"| saved {img_name_gray}")
+                      f"green_mean={green_mean:.4f} {trig_info} hits={consecutive_hits} "
+                      f"status={plant_status} | saved {img_name_gray}")
             else:
                 print(f"Frame {frame_idx} | mode={mode} sat={mean_sat:.1f} "
                       f"status={plant_status} | saved {img_name_gray}")
@@ -369,8 +380,8 @@ def main():
                     )
 
                 header = f"{mode} | sat={mean_sat:.1f} | status={plant_status}"
-                if baseline_green is not None and green_mean is not None and is_day:
-                    header += f" | baseline={baseline_green:.3f} now={green_mean:.3f} hits={consecutive_hits}"
+                if is_day and green_mean is not None:
+                    header += f" | green_mean={green_mean:.3f} thr={GREEN_MEAN_TRIGGER:.3f} hits={consecutive_hits}"
                 cv2.putText(
                     vis,
                     header,

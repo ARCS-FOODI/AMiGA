@@ -16,3 +16,5 @@
 2025-12-12T17:32:59.935609-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
 2025-12-12T17:33:00.036296-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
 2025-12-15T12:20:19.519522-08:00,sensor_read,sensors.snapshot_sensors,,,,,,,,72,1,5,1,3.138925,3.169875,3.1389,3.145075,,,,,,,,
+2025-12-15T13:06:50.741476-08:00,light_state,light.toggle_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-15T16:04:57.378152-08:00,sensor_read,sensors.snapshot_sensors,,,,,,,,72,1,5,1,3.288825,3.2889,3.288125,3.2883750000000003,,,,,,,,

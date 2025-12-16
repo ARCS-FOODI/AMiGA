@@ -39,7 +39,7 @@ ROWS = 4
 COLS = 4
 
 # Your crop fractions (top, bottom, left, right)
-CROP_TOP_FRAC = 0.187
+CROP_TOP_FRAC = 0.215
 CROP_BOTTOM_FRAC = 0.74
 CROP_LEFT_FRAC = 0.295
 CROP_RIGHT_FRAC = 0.615
@@ -51,13 +51,13 @@ SHOW_WINDOW = True
 DAY_SAT_THRESHOLD = 15.0  # tweak if needed
 
 # ---- Green detection (HSV mask) ----
-GREEN_HSV_LOWER = np.array([35, 40, 40], dtype=np.uint8)
+GREEN_HSV_LOWER = np.array([35, 80, 50], dtype=np.uint8)
 GREEN_HSV_UPPER = np.array([85, 255, 255], dtype=np.uint8)
 
 # ---- Germination detection ----
 # Absolute trigger: detect a small amount of green (mean green fraction across tray)
-GREEN_MEAN_TRIGGER = 0.005        # 0..1 (0.005 = 0.5% green). CHANGE THIS.
-CONSECUTIVE_DAY_HITS = 3          # require K consecutive day frames to reduce noise
+GREEN_MEAN_TRIGGER = 0.015        # 0..1 (0.005 = 0.5% green). CHANGE THIS.
+CONSECUTIVE_DAY_HITS = 1          # require K consecutive day frames to reduce noise
 
 # Optional baseline mode (disabled by default)
 USE_BASELINE = False

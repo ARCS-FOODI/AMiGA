@@ -102,9 +102,9 @@ class ControlCycleRequest(BaseModel):
     # Interpreted as a voltage threshold (V)
     target_threshold: float = DEFAULT_THRESH
     vote_k: int = DEFAULT_VOTE_K
-    hz: float = DEFAULT_HZ
-    irrigate_seconds: float = DEFAULT_IRR_SEC
-    direction: str = DEFAULT_DIR
+    hz: float = Field(DEFAULT_HZ)
+    irrigate_seconds: float = Field(DEFAULT_IRR_SEC)
+    direction: str = Field(DEFAULT_DIR)
     addr: int = DEFAULT_ADDR
     gain: int = DEFAULT_GAIN
     avg: int = DEFAULT_AVG

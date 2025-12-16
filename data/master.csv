@@ -21,3 +21,5 @@
 2025-12-15T16:53:23.925454-08:00,light_state,light.toggle_light,,,,,,,True,,,,,,,,,,,,,,,,
 2025-12-15T16:53:25.425988-08:00,light_state,light.toggle_light,,,,,,,False,,,,,,,,,,,,,,,,
 2025-12-15T17:01:00.709136-08:00,light_state,light.toggle_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-15T17:17:42.213081-08:00,light_state,light.toggle_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-15T17:17:43.472229-08:00,light_state,light.toggle_light,,,,,,,False,,,,,,,,,,,,,,,,

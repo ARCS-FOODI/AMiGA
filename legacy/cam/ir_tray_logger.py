@@ -44,7 +44,7 @@ CROP_BOTTOM_FRAC = 0.74
 CROP_LEFT_FRAC = 0.295
 CROP_RIGHT_FRAC = 0.615
 
-SHOW_WINDOW = True
+SHOW_WINDOW = False
 
 # ---- Day vs IR night auto-detect ----
 # If saturation is low, treat it as IR/grayscale-like

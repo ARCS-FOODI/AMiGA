@@ -1,6 +1,8 @@
 # backend/api.py
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -21,10 +23,23 @@ from .settings import (
     DEFAULT_SAMPLES,
     DEFAULT_COOLDOWN_S,
 )
-from . import sensors, pumps, control, config_store, light
+from . import sensors, pumps, control, config_store, light, grow_scheduler
 
 
-app = FastAPI(title="AMiGA Irrigation API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Start background scheduler when the API starts and stop it on shutdown.
+    This replaces deprecated @app.on_event("startup").
+    """
+    grow_scheduler.start()
+    try:
+        yield
+    finally:
+        grow_scheduler.stop()
+
+
+app = FastAPI(title="AMiGA Irrigation API", lifespan=lifespan)
 
 # CORS for React dev server
 app.add_middleware(
@@ -121,7 +136,6 @@ def get_config():
             "addr": DEFAULT_ADDR,
             "gain": DEFAULT_GAIN,
             "avg": DEFAULT_AVG,
-            # Now treated purely as a voltage threshold in V
             "thresh_v": DEFAULT_THRESH,
             "hz": DEFAULT_HZ,
             "dir": DEFAULT_DIR,
@@ -152,11 +166,9 @@ def api_run_pump_seconds(req: PumpSecondsRequest):
 
 @app.post("/pump/run-multi-seconds")
 def api_run_pumps_seconds(req: PumpMultiSecondsRequest):
-    # validate pump names
     for p in req.pumps:
         if p not in PUMP_PINS:
             raise HTTPException(status_code=400, detail=f"Unknown pump '{p}'")
-
     try:
         return pumps.run_pumps_seconds(
             pumps_list=req.pumps,
@@ -260,7 +272,6 @@ def api_control_run_continuous(req: ControlCycleRequest):
     if req.pump not in PUMP_PINS:
         raise HTTPException(status_code=400, detail=f"Unknown pump '{req.pump}'")
 
-    # ⚠ This call will BLOCK and never return until the process is stopped.
     control.control_cycle_continuous(
         pump=req.pump,
         target_threshold=req.target_threshold,
@@ -274,7 +285,6 @@ def api_control_run_continuous(req: ControlCycleRequest):
         loop_interval=DEFAULT_COOLDOWN_S,
     )
 
-    # Practically never reached
     return {"status": "stopped"}
 
 
@@ -307,14 +317,8 @@ def api_toggle_light():
 
 @app.post("/light/on-for")
 def api_light_on_for(req: LightTimedRequest, background_tasks: BackgroundTasks):
-    """
-    Turn the light ON immediately, then schedule it to turn OFF after `seconds`.
-    Non-blocking: returns as soon as the schedule is set.
-    """
     try:
-        # Turn ON now
         light.set_light(True)
-        # Schedule OFF in the background
         background_tasks.add_task(light.set_light_after_delay, False, req.seconds)
         return {"status": "scheduled", "seconds": req.seconds}
     except Exception as e:
@@ -323,9 +327,6 @@ def api_light_on_for(req: LightTimedRequest, background_tasks: BackgroundTasks):
 
 @app.get("/light/config")
 def api_get_light_config():
-    """
-    Get current light mode + day/night window.
-    """
     try:
         return light.get_light_config()
     except Exception as e:
@@ -334,12 +335,6 @@ def api_get_light_config():
 
 @app.post("/light/config")
 def api_set_light_config(req: LightConfig):
-    """
-    Set light mode and day/night window.
-
-    mode: "manual" or "daynight"
-    day_start/day_end: "HH:MM" or "HH:MM:SS"
-    """
     try:
         return light.set_light_config(req.mode, req.day_start, req.day_end)
     except ValueError as e:
@@ -350,18 +345,12 @@ def api_set_light_config(req: LightConfig):
 
 @app.post("/light/apply-daynight")
 def api_apply_light_daynight():
-    """
-    Evaluate the day/night rule and, if mode == 'daynight',
-    set the light according to the configured window.
-    """
     try:
         return light.apply_daynight_now()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Uvicorn entrypoint (optional)
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("backend.api:app", host="0.0.0.0", port=8000, reload=True)

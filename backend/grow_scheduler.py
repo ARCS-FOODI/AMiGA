@@ -8,6 +8,8 @@ from datetime import datetime, time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from zoneinfo import ZoneInfo
+
 from . import light, pumps, master_log
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,17 +23,24 @@ SCHED_STATE_FILE = DATA_DIR / "scheduler_state.json"
 # USER TUNABLES
 # ----------------------------
 
-# Start day/night cycle AFTER germination.
-# Requirement: 8–10 hours darkness -> choose 10h dark (14h light).
-# Dark window: 20:00 -> 06:00
+# Your timezone (scheduler decisions are made in this tz)
+TZ_NAME = "America/Los_Angeles"
+
+# Turn ON the day/night cycle starting on a fixed datetime (so the camera has light to detect green).
+# Format: "YYYY-MM-DD HH:MM" (local time in TZ_NAME)
+DAYNIGHT_START_AT = "2025-12-18 07:00"
+
+# Day/night window (8–10 hours darkness required).
+# Choose 10h dark (14h light): dark 20:00 -> 06:00
 LIGHT_ON_START = "06:00"   # lights ON
 LIGHT_ON_END   = "20:00"   # lights OFF
 
 # Daily food dose AFTER germination
 FOOD_PUMP_NAME = "food"
 FOOD_ML_PER_DAY = 100.0
-FOOD_DOSE_TIME = "12:00"   # noon local time
+FOOD_DOSE_TIME = "12:00"   # noon local time (safer than midnight)
 
+# How often the scheduler loop wakes up
 TICK_SECONDS = 20.0
 
 # ----------------------------
@@ -47,6 +56,17 @@ def _parse_hhmm(s: str) -> time:
     h = int(parts[0])
     m = int(parts[1])
     return time(hour=h, minute=m, second=0)
+
+
+def _parse_local_datetime(s: str, tz: ZoneInfo) -> datetime:
+    """
+    Parse 'YYYY-MM-DD HH:MM' into timezone-aware datetime.
+    """
+    s = s.strip()
+    # Accept either "YYYY-MM-DD HH:MM" or ISO-like "YYYY-MM-DDTHH:MM"
+    s = s.replace("T", " ")
+    dt_naive = datetime.strptime(s, "%Y-%m-%d %H:%M")
+    return dt_naive.replace(tzinfo=tz)
 
 
 def _read_json(path: Path, default: Dict[str, Any]) -> Dict[str, Any]:
@@ -78,25 +98,22 @@ def _set_state(state: Dict[str, Any]) -> None:
 
 
 def _ensure_daynight_enabled() -> None:
-    try:
-        cfg = light.get_light_config()
-        if cfg.get("mode") != "daynight":
-            # IMPORTANT: light.set_light_config(mode, day_start, day_end)
-            light.set_light_config("daynight", LIGHT_ON_START, LIGHT_ON_END)
-            master_log.log_event(
-                "scheduler_light_daynight_enabled",
-                source="grow_scheduler._ensure_daynight_enabled",
-                note=f"start={LIGHT_ON_START} end={LIGHT_ON_END}",
-            )
-    except Exception as e:
-        print(f"[SCHED] failed to enable daynight: {e}")
+    """
+    Force light config into daynight mode with our schedule.
+    """
+    cfg = light.get_light_config()
+    if cfg.get("mode") != "daynight":
+        # IMPORTANT: light.set_light_config(mode, day_start, day_end)
+        light.set_light_config("daynight", LIGHT_ON_START, LIGHT_ON_END)
+        master_log.log_event(
+            "scheduler_light_daynight_enabled",
+            source="grow_scheduler._ensure_daynight_enabled",
+            note=f"start={LIGHT_ON_START} end={LIGHT_ON_END}",
+        )
 
 
 def _apply_daynight_now() -> None:
-    try:
-        light.apply_daynight_now()
-    except Exception as e:
-        print(f"[SCHED] apply_daynight_now failed: {e}")
+    light.apply_daynight_now()
 
 
 def _food_due(now: datetime, last_food_date: str) -> bool:
@@ -118,14 +135,28 @@ def _run_food_dose() -> None:
 
 
 def tick() -> None:
+    """
+    Scheduler behavior:
+      - Starting DAYNIGHT_START_AT: enable daynight lighting and keep applying it.
+      - Food dosing still requires plant_status == 'germinated'.
+    """
+    tz = ZoneInfo(TZ_NAME)
+    now = datetime.now(tz)
+    daynight_start = _parse_local_datetime(DAYNIGHT_START_AT, tz)
+
+    # 1) Lighting is enabled after the fixed start time (regardless of germination)
+    if now >= daynight_start:
+        try:
+            _ensure_daynight_enabled()
+            _apply_daynight_now()
+        except Exception as e:
+            print(f"[SCHED] lighting tick failed: {e}")
+
+    # 2) Daily food dose requires germination
     status = _get_plant_status()
     if status != "germinated":
         return
 
-    _ensure_daynight_enabled()
-    _apply_daynight_now()
-
-    now = datetime.now().astimezone()
     state = _get_state()
     last_food_date = str(state.get("last_food_date", ""))
 

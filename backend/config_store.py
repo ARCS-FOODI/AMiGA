@@ -14,8 +14,8 @@ CALIBRATION_FILE = CONFIG_DIR / "calibration.json"
 
 DEFAULT_CALIBRATION: Dict[str, Any] = {
     "pumps": {
-        "water": {"ml_per_sec": 4.436},
-        "food": {"ml_per_sec": 4.436},
+        "water": {"ml_per_sec": 1.48},
+        "food": {"ml_per_sec": 1.48},
     }
 }
 

@@ -21045,3 +21045,7 @@
 2025-12-19T11:35:50.225651-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
 2025-12-19T11:35:50.443933-08:00,sensor_read,sensors.snapshot_sensors,,,,,,,,72,1,5,1,1.846175,1.251525,3.2839750000000003,1.062275,,,,,,,,
 2025-12-19T11:35:50.444456-08:00,control_cycle,control.control_cycle_once,water,,,,10000.0,,,,,,,1.846175,1.251525,3.2839750000000003,1.062275,,2.0,2,5.0,False,False,1,
+2025-12-19T11:36:10.226763-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-19T11:36:10.327525-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2025-12-19T11:36:30.328412-08:00,light_state,light.set_light,,,,,,,True,,,,,,,,,,,,,,,,
+2025-12-19T11:36:30.428888-08:00,light_daynight_apply,light.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True

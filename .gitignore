@@ -236,3 +236,7 @@ dist-ssr
 
 # Secret Key
 config/amiga-gcp-key.json
+
+# Outputs
+*.png
+*.jpg

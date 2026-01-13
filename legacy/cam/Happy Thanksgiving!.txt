@@ -10,3 +10,5 @@ Traceback (most recent call last):
 cv2.error: OpenCV(4.12.0) /io/opencv/modules/imgcodecs/src/loadsave.cpp:1266: error: (-215:Assertion failed) !buf.empty() in function 'imdecode_'
 
 (venv) foodi@raspberrypi:~/Documents/AMiGA $ 
+
+test

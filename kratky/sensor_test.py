@@ -2,12 +2,12 @@ import time
 import board
 import busio
 import adafruit_tsl2561
-import adafruit_sgp30
+import adafruit_scd4x
 
 def init_i2c():
-    """Initializes the I2C bus."""
+    """Initializes the I2C bus using busio."""
     try:
-        # Using explicit busio for better stability on Pi 5
+        # Explicitly uses the Pi 5 GPIO pins
         i2c = busio.I2C(board.SCL, board.SDA)
         return i2c
     except Exception as e:
@@ -19,74 +19,61 @@ def test_tsl2561(i2c_bus):
     print("\n--- Testing TSL2561 (Light) ---")
     try:
         sensor = adafruit_tsl2561.TSL2561(i2c_bus)
-        
-        lux = sensor.lux
-        broadband = sensor.broadband
-        infrared = sensor.infrared
-        
-        print(f"Status: SUCCESS")
-        print(f"Lux: {lux if lux is not None else 0:.2f}")
-        print(f"Broadband Light: {broadband}")
-        print(f"Infrared Light: {infrared}")
+        print(f"Lux: {sensor.lux if sensor.lux else 0:.2f}")
+        print(f"Broadband: {sensor.broadband}")
+        print("Status: SUCCESS")
         return True
     except ValueError:
-        print("Status: FAILED (Sensor not found at address 0x39 or 0x29)")
-        return False
-    except Exception as e:
-        print(f"Status: ERROR ({e})")
+        print("Status: FAILED (TSL2561 not found)")
         return False
 
-def test_sgp30(i2c_bus):
-    """Initializes and reads from the SGP30 Air Quality Sensor at 0x48."""
-    print("\n--- Testing SGP30 (Air Quality) ---")
+def test_scd41(i2c_bus):
+    """Initializes and reads from the SCD41 CO2 Sensor."""
+    print("\n--- Testing SCD41 (True CO2) ---")
     try:
-        # UPDATED: Forcing the library to look at address 0x48
-        sensor = adafruit_sgp30.Adafruit_SGP30(i2c_bus, address=0x48)
+        sensor = adafruit_scd4x.SCD4X(i2c_bus)
         
-        print("Initializing... (SGP30 requires a specific startup command)")
-        sensor.iaq_init()
-        
-        # SGP30 needs a moment to stabilize after init
-        time.sleep(1)
-        
-        eCO2 = sensor.eCO2
-        tvoc = sensor.TVOC
-        
-        print(f"Status: SUCCESS")
-        print(f"eCO2: {eCO2} ppm")
-        print(f"TVOC: {tvoc} ppb")
-        
-        if eCO2 == 400 and tvoc == 0:
-            print("NOTE: Reading is 400/0 (Calibration Baseline).")
+        # 1. Start the sensing loop (only needs to run once per power-up)
+        # If it's already running, this command is ignored, which is fine.
+        try:
+            sensor.start_periodic_measurement()
+        except:
+            pass # It might already be running
+
+        # 2. Check if data is ready
+        # The SCD41 updates every 5 seconds. If we query it too fast,
+        # data_ready will be False.
+        if sensor.data_ready:
+            print(f"CO2: {sensor.CO2} ppm")
+            print(f"Temperature: {sensor.temperature:.1f} C")
+            print(f"Humidity: {sensor.relative_humidity:.1f} %")
+            print("Status: SUCCESS")
+        else:
+            print("Status: WAITING (Sensor is collecting data, try again in 5s)")
             
         return True
     except ValueError:
-        print("Status: FAILED (Sensor not found at address 0x48)")
-        return False
-    except Exception as e:
-        print(f"Status: ERROR ({e})")
-        print("Note: If this error mentions 'register', it might be because 0x48 is the ADS1115, not the SGP30.")
+        print("Status: FAILED (SCD41 not found at address 0x62)")
         return False
 
 def main():
-    print("Starting Modular Sensor Check for Raspberry Pi 5...")
+    print("Starting Updated Sensor Check (TSL2561 + SCD41)...")
     
-    # 1. Setup I2C
     i2c = init_i2c()
     if not i2c:
         return
 
-    # 2. Main Loop
     try:
         while True:
             print("\n" + "="*30)
             print(f"Time: {time.ctime()}")
             
             test_tsl2561(i2c)
-            test_sgp30(i2c)
+            test_scd41(i2c)
             
             print("="*30)
-            time.sleep(2)
+            # We sleep 5 seconds because the SCD41 only updates that often
+            time.sleep(5)
             
     except KeyboardInterrupt:
         print("\nTest stopped by user.")

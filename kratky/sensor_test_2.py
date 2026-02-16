@@ -4,20 +4,22 @@ import busio
 import adafruit_tsl2561
 import adafruit_scd4x
 import os
-from datetime import datetime
+from datetime import datetime  # Added for timestamp
 
-# Paths
-BASE_DIR = "/home/foodi/Documents/AMiGA/kratky"
-DATA_FILE = os.path.join(BASE_DIR, "sinfo")
-LOG_FILE = os.path.join(BASE_DIR, "sensor_log.csv")
+# Specific Path and Filename
+DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo"
+LOG_FILE = "/home/foodi/Documents/AMiGA/kratky/sensor_log.csv" # New Log File
 
 def init_sensors():
     i2c = busio.I2C(board.SCL, board.SDA)
-    tsl, scd4x = None, None
+    tsl = None
+    scd4x = None
+    
     try:
         tsl = adafruit_tsl2561.TSL2561(i2c)
     except Exception as e:
         print(f"TSL2561 Error: {e}")
+
     try:
         scd4x = adafruit_scd4x.SCD4X(i2c)
         scd4x.stop_periodic_measurement()
@@ -25,56 +27,57 @@ def init_sensors():
         scd4x.start_periodic_measurement()
     except Exception as e:
         print(f"SCD41 Error: {e}")
+        
     return tsl, scd4x
 
 def main():
-    os.makedirs(BASE_DIR, exist_ok=True)
-    
-    # Initialize Log CSV with headers if it doesn't exist
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+    tsl, scd4x = init_sensors()
+
+    # Define variables OUTSIDE the loop so they persist (prevents "N/A" flickering)
+    lux_val = "N/A"
+    temp_f = "N/A"
+    hum_val = "N/A"
+    co2_val = "N/A"
+
+    # Create CSV Header if file doesn't exist
     if not os.path.exists(LOG_FILE):
         with open(LOG_FILE, "w") as f:
             f.write("Timestamp,Lux,Temp_F,Humidity,CO2\n")
 
-    tsl, scd4x = init_sensors()
-
-    print(f"Logging started. Saving to {LOG_FILE}")
-
     while True:
         try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # 1. Update Lux (Fast - updates every second)
+            if tsl and tsl.lux is not None:
+                lux_val = f"{tsl.lux:.1f}"
             
-            # Read Light
-            lux_val = f"{tsl.lux:.1f}" if (tsl and tsl.lux is not None) else "N/A"
-            
-            # Read Air (only updates if data_ready is True)
-            temp_f, hum_val, co2_val = "N/A", "N/A", "N/A"
-            
+            # 2. Update Air (Slow - checks every second, but updates variables only when ready)
             if scd4x and scd4x.data_ready:
+                co2_val = str(scd4x.CO2)
                 temp_c = scd4x.temperature
                 temp_f = f"{(temp_c * 9/5) + 32:.1f}"
                 hum_val = f"{scd4x.relative_humidity:.1f}"
-                co2_val = str(scd4x.CO2)
 
-                # 1. Log to CSV (Scientific Data Collection)
-                # We log inside this 'if' so we don't log duplicate data 5 times a second
-                with open(LOG_FILE, "a") as f:
-                    f.write(f"{timestamp},{lux_val},{temp_f},{hum_val},{co2_val}\n")
-
-            # 2. Update the OBS display file (sinfo)
+            # 3. Write to OBS File (sinfo)
             output = (
                 f"Lux: {lux_val} lx\n"
                 f"Temp: {temp_f} °F\n"
                 f"Hum: {hum_val} %\n"
                 f"CO2: {co2_val} ppm"
             )
-            
+
             with open(DATA_FILE + ".tmp", "w") as f:
                 f.write(output)
             os.replace(DATA_FILE + ".tmp", DATA_FILE)
 
-            # Sleep for 1 second as requested
-            time.sleep(1)
+            # 4. Append to CSV Log (Records every second)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(LOG_FILE, "a") as f:
+                f.write(f"{timestamp},{lux_val},{temp_f},{hum_val},{co2_val}\n")
             
+            # Safe to sleep for just 1 second now because variables persist
+            time.sleep(1)
+
         except Exception as e:
             print(f"Loop Error: {e}")
             time.sleep(2)

@@ -50,10 +50,10 @@ def main():
 
             # Format EXACTLY as requested for OBS
             output = (
-                f"Lux: {lux_val}\n"
-                f"Temp: {temp_f}\n"
-                f"Hum: {hum_val}\n"
-                f"CO2: {co2_val}"
+                f"Lux: {lux_val} lx\n"
+                f"Temp: {temp_f} °F\n"
+                f"Hum: {hum_val} %\n"
+                f"CO2: {co2_val} ppm"
             )
 
             # Atomic write to sinfo

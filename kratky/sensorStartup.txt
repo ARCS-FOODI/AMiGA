@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=SensorLogger
+Comment=Start Raspberry Pi Sensor Data Collection
+Exec=python3 /home/foodi/Documents/AMiGA/kratky/your_script_name.py
+Terminal=false
+X-GNOME-Autostart-enabled=true

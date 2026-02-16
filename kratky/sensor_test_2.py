@@ -5,68 +5,63 @@ import adafruit_tsl2561
 import adafruit_scd4x
 import os
 
-# Updated Path
+# Specific Path and Filename
 DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo"
 
-def init_i2c():
-    try:
-        i2c = busio.I2C(board.SCL, board.SDA)
-        return i2c
-    except Exception as e:
-        print(f"I2C Error: {e}")
-        return None
-
-def setup_scd41(scd4x_sensor):
-    try:
-        scd4x_sensor.stop_periodic_measurement()
-        time.sleep(1)
-        scd4x_sensor.start_periodic_measurement()
-        return True
-    except:
-        return False
-
-def main():
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    
-    i2c = init_i2c()
-    if not i2c: return
-
+def init_sensors():
+    i2c = busio.I2C(board.SCL, board.SDA)
     tsl = None
     scd4x = None
     
     try:
         tsl = adafruit_tsl2561.TSL2561(i2c)
-    except:
-        print("TSL2561 not found.")
+    except Exception as e:
+        print(f"TSL2561 Error: {e}")
 
     try:
         scd4x = adafruit_scd4x.SCD4X(i2c)
-        setup_scd41(scd4x)
-    except:
-        print("SCD41 not found.")
+        scd4x.stop_periodic_measurement()
+        time.sleep(1)
+        scd4x.start_periodic_measurement()
+    except Exception as e:
+        print(f"SCD41 Error: {e}")
+        
+    return tsl, scd4x
+
+def main():
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+    tsl, scd4x = init_sensors()
 
     while True:
         try:
-            lines = []
-            if tsl:
-                lines.append(f"Light: {tsl.lux if tsl.lux else 0:.1f} Lux")
+            # Gather values or set to N/A
+            lux_val = f"{tsl.lux:.1f}" if (tsl and tsl.lux is not None) else "N/A"
+            
+            temp_val = "N/A"
+            hum_val = "N/A"
+            co2_val = "N/A"
             
             if scd4x and scd4x.data_ready:
-                lines.append(f"CO2: {scd4x.CO2} ppm")
-                lines.append(f"Temp: {scd4x.temperature:.1f} C")
-                lines.append(f"Hum: {scd4x.relative_humidity:.1f} %")
-            
-            output_text = "\n".join(lines)
-            
-            # Atomic write: write to temp file then rename to avoid OBS reading empty file
+                co2_val = str(scd4x.CO2)
+                temp_val = f"{scd4x.temperature:.1f}"
+                hum_val = f"{scd4x.relative_humidity:.1f}"
+
+            # Format EXACTLY as requested
+            output = (
+                f"Lux: {lux_val}\n"
+                f"Temp: {temp_val}\n"
+                f"Hum: {hum_val}\n"
+                f"CO2: {co2_val}"
+            )
+
+            # Atomic write to prevent OBS reading a partial file
             with open(DATA_FILE + ".tmp", "w") as f:
-                f.write(output_text)
+                f.write(output)
             os.replace(DATA_FILE + ".tmp", DATA_FILE)
             
             time.sleep(5)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Loop Error: {e}")
             time.sleep(2)
 
 if __name__ == "__main__":

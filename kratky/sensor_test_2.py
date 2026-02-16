@@ -34,27 +34,29 @@ def main():
 
     while True:
         try:
-            # Gather values or set to N/A
+            # Gather Lux value
             lux_val = f"{tsl.lux:.1f}" if (tsl and tsl.lux is not None) else "N/A"
             
-            temp_val = "N/A"
+            temp_f = "N/A"
             hum_val = "N/A"
             co2_val = "N/A"
             
             if scd4x and scd4x.data_ready:
                 co2_val = str(scd4x.CO2)
-                temp_val = f"{scd4x.temperature:.1f}"
+                # Scientific Conversion: (Celsius * 9/5) + 32
+                temp_c = scd4x.temperature
+                temp_f = f"{(temp_c * 9/5) + 32:.1f}"
                 hum_val = f"{scd4x.relative_humidity:.1f}"
 
-            # Format EXACTLY as requested
+            # Format EXACTLY as requested for OBS
             output = (
                 f"Lux: {lux_val}\n"
-                f"Temp: {temp_val}\n"
+                f"Temp: {temp_f}\n"
                 f"Hum: {hum_val}\n"
                 f"CO2: {co2_val}"
             )
 
-            # Atomic write to prevent OBS reading a partial file
+            # Atomic write to sinfo
             with open(DATA_FILE + ".tmp", "w") as f:
                 f.write(output)
             os.replace(DATA_FILE + ".tmp", DATA_FILE)

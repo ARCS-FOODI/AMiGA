@@ -240,3 +240,4 @@ config/amiga-gcp-key.json
 # Outputs
 *.png
 *.jpg
+kratky/sinfo

@@ -124,7 +124,7 @@ def _food_due(now: datetime, last_food_date: str) -> bool:
 
 
 def _run_food_dose() -> None:
-    result = pumps.run_pump_ml(pump=FOOD_PUMP_NAME, ml=FOOD_ML_PER_DAY)
+    result = pumps.manager.get_pump(FOOD_PUMP_NAME).dispense_ml(ml=FOOD_ML_PER_DAY)
     master_log.log_event(
         "scheduler_food_dose",
         source="grow_scheduler._run_food_dose",

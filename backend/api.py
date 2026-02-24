@@ -29,14 +29,16 @@ from . import sensors, pumps, control, config_store, light, grow_scheduler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Start background scheduler when the API starts and stop it on shutdown.
-    This replaces deprecated @app.on_event("startup").
+    Start background scheduler and init global pump manager when the API starts 
+    and stop them on shutdown.
     """
+    pumps.manager.startup()
     grow_scheduler.start()
     try:
         yield
     finally:
         grow_scheduler.stop()
+        pumps.manager.shutdown()
 
 
 app = FastAPI(title="AMiGA Irrigation API", lifespan=lifespan)
@@ -154,8 +156,7 @@ def api_run_pump_seconds(req: PumpSecondsRequest):
     if req.pump not in PUMP_PINS:
         raise HTTPException(status_code=400, detail=f"Unknown pump '{req.pump}'")
     try:
-        return pumps.run_pump_seconds(
-            pump=req.pump,
+        return pumps.manager.get_pump(req.pump).run_for_seconds(
             seconds=req.seconds,
             hz=req.hz,
             direction=req.direction,
@@ -170,8 +171,8 @@ def api_run_pumps_seconds(req: PumpMultiSecondsRequest):
         if p not in PUMP_PINS:
             raise HTTPException(status_code=400, detail=f"Unknown pump '{p}'")
     try:
-        return pumps.run_pumps_seconds(
-            pumps_list=req.pumps,
+        return pumps.manager.run_multi_seconds(
+            pump_names=req.pumps,
             seconds=req.seconds,
             hz=req.hz,
             direction=req.direction,
@@ -185,8 +186,7 @@ def api_calibrate_pump(req: PumpCalibrateRequest):
     if req.pump not in PUMP_PINS:
         raise HTTPException(status_code=400, detail=f"Unknown pump '{req.pump}'")
     try:
-        return pumps.calibrate_pump_seconds(
-            pump=req.pump,
+        return pumps.manager.get_pump(req.pump).calibrate(
             run_seconds=req.run_seconds,
             hz=req.hz,
         )
@@ -199,8 +199,7 @@ def api_run_pump_ml(req: PumpMlRequest):
     if req.pump not in PUMP_PINS:
         raise HTTPException(status_code=400, detail=f"Unknown pump '{req.pump}'")
     try:
-        return pumps.run_pump_ml(
-            pump=req.pump,
+        return pumps.manager.get_pump(req.pump).dispense_ml(
             ml=req.ml,
             hz=req.hz,
             direction=req.direction,

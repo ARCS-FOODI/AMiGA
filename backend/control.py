@@ -156,8 +156,7 @@ def control_cycle_once(
     after: Dict[str, Any] | None = None
 
     if triggered and irrigate_seconds > 0:
-        pump_action = pumps.run_pump_seconds(
-            pump=pump,
+        pump_action = pumps.manager.get_pump(pump).run_for_seconds(
             seconds=irrigate_seconds,
             hz=hz,
             direction=direction,

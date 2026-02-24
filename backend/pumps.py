@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import time
-from typing import Dict, Any
+import threading
+from typing import Dict, Any, List
 
 import lgpio
 
@@ -10,273 +11,328 @@ from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR
 from . import config_store, master_log
 
 
-def gpio_setup_outputs(handle: int) -> None:
+class StepperPump:
     """
-    Claim outputs for all defined pumps and set safe defaults
-    (EN HIGH = disabled, STEP=0, DIR=0).
+    Object-Oriented representation of a Stepper Motor Pump.
+    Manages its own GPIO state, calibration data, and execution lock.
     """
-    for pins in PUMP_PINS.values():
-        lgpio.gpio_claim_output(handle, pins["STEP"], 0)
-        lgpio.gpio_claim_output(handle, pins["DIR"],  0)
-        lgpio.gpio_claim_output(handle, pins["EN"],   1)
+    def __init__(self, name: str, pins: Dict[str, int], chip: int = CHIP):
+        self.name = name
+        self.pins = pins
+        self.chip = chip
+        self._handle = None
+        self._lock = threading.Lock()
+        
+        # Public state
+        self.is_running = False
+        
+        # Load initial calibration
+        self.calibration_rate = self._load_calibration()
+
+    def _load_calibration(self) -> float:
+        return config_store.get_pump_calibration(self.name) or 0.0
+
+    def refresh_calibration(self) -> None:
+        """Update calibration rate from store."""
+        self.calibration_rate = self._load_calibration()
+
+    def initialize(self, handle: int) -> None:
+        """
+        Bind the pump to an open GPIO handle and set safe default states
+        (EN HIGH = disabled, STEP=0, DIR=0).
+        """
+        self._handle = handle
+        lgpio.gpio_claim_output(self._handle, self.pins["STEP"], 0)
+        lgpio.gpio_claim_output(self._handle, self.pins["DIR"], 0)
+        lgpio.gpio_claim_output(self._handle, self.pins["EN"], 1)
+
+    def _set_direction(self, dir_name: str) -> None:
+        """Internal helper to set the DIR pin."""
+        if not self._handle:
+            raise RuntimeError(f"Pump {self.name} is not initialized.")
+            
+        name = dir_name.lower()
+        if name in ("fwd", "forward", "cw"):
+            lgpio.gpio_write(self._handle, self.pins["DIR"], 1)
+        elif name in ("rev", "reverse", "ccw", "back"):
+            lgpio.gpio_write(self._handle, self.pins["DIR"], 0)
+        else:
+            raise ValueError("dir must be 'forward' or 'reverse'")
+
+    def _enable_driver(self, enable: bool) -> None:
+        """Internal helper to set the EN pin (Active LOW)."""
+        if not self._handle:
+            return
+        lgpio.gpio_write(self._handle, self.pins["EN"], 0 if enable else 1)
+
+    def _step_loop(self, hz: float, seconds: float) -> None:
+        """Blocking loop that pulses the STEP pin."""
+        if hz <= 0:
+            raise ValueError("hz must be > 0")
+        if seconds <= 0:
+            return
+
+        sp = self.pins["STEP"]
+        half = 1.0 / (hz * 2.0)
+        end_time = time.time() + seconds
+        write = lgpio.gpio_write
+
+        while time.time() < end_time:
+            write(self._handle, sp, 1)
+            time.sleep(half)
+            write(self._handle, sp, 0)
+            time.sleep(half)
+
+    def run_for_seconds(
+        self, 
+        seconds: float, 
+        hz: float = DEFAULT_HZ, 
+        direction: str = DEFAULT_DIR
+    ) -> Dict[str, Any]:
+        """
+        Run the pump for a specific duration. Thread-safe to prevent concurrent overlapping runs.
+        """
+        if not self._lock.acquire(blocking=False):
+            raise RuntimeError(f"Pump '{self.name}' is already running.")
+
+        self.is_running = True
+        try:
+            self._set_direction(direction)
+            self._enable_driver(True)
+            self._step_loop(hz, seconds)
+        finally:
+            self._enable_driver(False)
+            self.is_running = False
+            self._lock.release()
+
+        # Log to master.csv
+        try:
+            master_log.log_event(
+                "pump_run_seconds",
+                source="StepperPump.run_for_seconds",
+                pump=self.name,
+                seconds=seconds,
+                hz=hz,
+                direction=direction,
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log pump_run_seconds to master.csv: {e}")
+
+        return {
+            "pump": self.name,
+            "seconds": seconds,
+            "hz": hz,
+            "direction": direction,
+            "status": "ok",
+        }
+
+    def dispense_ml(
+        self, 
+        ml: float, 
+        hz: float = DEFAULT_HZ, 
+        direction: str = DEFAULT_DIR
+    ) -> Dict[str, Any]:
+        """
+        Run pump based on target volume, using current calibration (ml/s).
+        """
+        self.refresh_calibration() # Ensure we have the latest calibration
+        if self.calibration_rate <= 0.0:
+            raise RuntimeError(
+                f"Pump '{self.name}' has ml_per_sec=0. Set calibration via /pump/calibration first."
+            )
+
+        seconds = ml / self.calibration_rate
+        
+        # Hand off to standard run function for execution and logging
+        result = self.run_for_seconds(seconds, hz, direction)
+        
+        # Override the log and return values to reflect a volume-based run
+        result.update({
+            "ml": ml,
+            "rate_ml_per_sec": self.calibration_rate,
+        })
+        
+        try:
+            master_log.log_event(
+                "pump_run_ml",
+                source="StepperPump.dispense_ml",
+                pump=self.name,
+                ml=ml,
+                seconds=seconds,
+                hz=hz,
+                direction=direction,
+                note=f"rate_ml_per_sec={self.calibration_rate}",
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log pump_run_ml to master.csv: {e}")
+            
+        return result
+
+    def calibrate(self, run_seconds: float, hz: float = DEFAULT_HZ) -> Dict[str, Any]:
+        """Run pump for fixed time for manual volume measurement."""
+        self.run_for_seconds(run_seconds, hz, DEFAULT_DIR)
+        
+        try:
+            master_log.log_event(
+                "pump_calibration_run",
+                source="StepperPump.calibrate",
+                pump=self.name,
+                seconds=run_seconds,
+                hz=hz,
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log pump_calibration_run to master.csv: {e}")
+
+        return {
+            "pump": self.name,
+            "run_seconds": run_seconds,
+            "hz": hz,
+            "message": (
+                f"Calibration run complete. Measure mL in your cylinder, then "
+                f"POST the measured ml_per_sec to /pump/calibration for '{self.name}'."
+            ),
+        }
 
 
-def set_direction(handle: int, pump: str, dir_name: str) -> None:
-    pins = PUMP_PINS[pump]
-    name = dir_name.lower()
-    if name in ("fwd", "forward", "cw"):
-        lgpio.gpio_write(handle, pins["DIR"], 1)
-    elif name in ("rev", "reverse", "ccw", "back"):
-        lgpio.gpio_write(handle, pins["DIR"], 0)
-    else:
-        raise ValueError("dir must be 'forward' or 'reverse'")
-
-
-def enable_driver(handle: int, pump: str, enable: bool) -> None:
-    pins = PUMP_PINS[pump]
-    lgpio.gpio_write(handle, pins["EN"], 0 if enable else 1)
-
-
-def step_for_seconds(handle: int, pump: str, hz: float, seconds: float) -> None:
+def step_for_seconds_multi(handle: int, pump_names: List[str], hz: float, seconds: float) -> None:
+    """Helper function to step multiple pumps simultaneously."""
     if hz <= 0:
         raise ValueError("hz must be > 0")
     if seconds <= 0:
         return
-    pins = PUMP_PINS[pump]
-    sp = pins["STEP"]
-    half = 1.0 / (hz * 2.0)
-    end_time = time.time() + seconds
-    write = lgpio.gpio_write
-    while time.time() < end_time:
-        write(handle, sp, 1); time.sleep(half)
-        write(handle, sp, 0); time.sleep(half)
-
-
-def step_for_seconds_multi(handle: int, pump_names: list[str], hz: float, seconds: float) -> None:
-    if hz <= 0:
-        raise ValueError("hz must be > 0")
-    if seconds <= 0:
-        return
 
     half = 1.0 / (hz * 2.0)
     end_time = time.time() + seconds
     write = lgpio.gpio_write
 
-    # Cache STEP pins for all pumps
     step_pins = [PUMP_PINS[p]["STEP"] for p in pump_names]
 
     while time.time() < end_time:
-        # rising edge on all STEP pins
         for sp in step_pins:
             write(handle, sp, 1)
         time.sleep(half)
-
-        # falling edge on all STEP pins
         for sp in step_pins:
             write(handle, sp, 0)
         time.sleep(half)
 
 
-def _with_handle(fn):
+class PumpManager:
     """
-    Small helper to open/close gpiochip0 around an operation.
+    Global manager for all pumps. Handles the GPIO chip lifecycle and multi-pump operations.
     """
+    def __init__(self, chip_index: int = CHIP):
+        self.chip_index = chip_index
+        self._handle = None
+        self.pumps: Dict[str, StepperPump] = {}
+        
+        # Create instances
+        for name, pins in PUMP_PINS.items():
+            self.pumps[name] = StepperPump(name, pins, self.chip_index)
 
-    def wrapper(*args, **kwargs):
-        h = lgpio.gpiochip_open(CHIP)
+    def startup(self) -> None:
+        """Open GPIO chip and initialize all pump pins."""
+        self._handle = lgpio.gpiochip_open(self.chip_index)
+        for pump in self.pumps.values():
+            pump.initialize(self._handle)
+
+    def shutdown(self) -> None:
+        """Safely disable all pumps and release the GPIO chip."""
+        if self._handle is not None:
+            for pump in self.pumps.values():
+                pump._enable_driver(False)
+            lgpio.gpiochip_close(self._handle)
+            self._handle = None
+
+    def get_pump(self, name: str) -> StepperPump:
+        if name not in self.pumps:
+            raise ValueError(f"Unknown pump '{name}'")
+        return self.pumps[name]
+
+    def run_multi_seconds(
+        self, 
+        pump_names: List[str], 
+        seconds: float, 
+        hz: float = DEFAULT_HZ, 
+        direction: str = DEFAULT_DIR
+    ) -> Dict[str, Any]:
+        """Run multiple pumps simultaneously for the same duration."""
+        if not self._handle:
+            raise RuntimeError("PumpManager not initialized.")
+
+        active_pumps = [self.get_pump(p) for p in pump_names]
+        
+        # Try to acquire locks for all requested pumps
+        acquired_locks = []
         try:
-            gpio_setup_outputs(h)
-            return fn(h, *args, **kwargs)
+            for p in active_pumps:
+                if p._lock.acquire(blocking=False):
+                    acquired_locks.append(p)
+                else:
+                    raise RuntimeError(f"Pump '{p.name}' is already running.")
+            
+            # Setup all
+            for p in active_pumps:
+                p.is_running = True
+                p._set_direction(direction)
+                p._enable_driver(True)
+                
+            # Run block
+            step_for_seconds_multi(self._handle, pump_names, hz, seconds)
+            
         finally:
-            # safety: disable all pumps and close
-            try:
-                for pump_name in PUMP_PINS.keys():
-                    try:
-                        enable_driver(h, pump_name, False)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            lgpio.gpiochip_close(h)
+            # Teardown all
+            for p in acquired_locks:
+                p._enable_driver(False)
+                p.is_running = False
+                p._lock.release()
 
-    return wrapper
+        result = {
+            "pumps": pump_names,
+            "seconds": seconds,
+            "hz": hz,
+            "direction": direction,
+            "status": "ok",
+        }
 
+        try:
+            master_log.log_event(
+                "pump_run_multi_seconds",
+                source="PumpManager.run_multi_seconds",
+                pumps=",".join(pump_names),
+                seconds=seconds,
+                hz=hz,
+                direction=direction,
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log pump_run_multi_seconds to master.csv: {e}")
 
-@_with_handle
-def run_pump_seconds(
-    handle: int,
-    pump: str,
-    seconds: float,
-    hz: float = DEFAULT_HZ,
-    direction: str = DEFAULT_DIR,
-) -> Dict[str, Any]:
-    set_direction(handle, pump, direction)
-    enable_driver(handle, pump, True)
-    try:
-        step_for_seconds(handle, pump, hz, seconds)
-    finally:
-        enable_driver(handle, pump, False)
-
-    result = {
-        "pump": pump,
-        "seconds": seconds,
-        "hz": hz,
-        "direction": direction,
-        "status": "ok",
-    }
-
-    # Log to master.csv
-    try:
-        master_log.log_event(
-            "pump_run_seconds",
-            source="pumps.run_pump_seconds",
-            pump=pump,
-            seconds=seconds,
-            hz=hz,
-            direction=direction,
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log pump_run_seconds to master.csv: {e}")
-
-    return result
+        return result
 
 
-@_with_handle
-def run_pumps_seconds(
-    handle: int,
-    pumps_list: list[str],
-    seconds: float,
-    hz: float = DEFAULT_HZ,
-    direction: str = DEFAULT_DIR,
-) -> Dict[str, Any]:
-    """
-    Run multiple pumps simultaneously for the same duration and frequency.
-    """
-    # Set direction + enable all requested pumps
-    for pump in pumps_list:
-        set_direction(handle, pump, direction)
-        enable_driver(handle, pump, True)
+# Global singleton for procedural API endpoints to wrap around if needed
+# though ideally api.py uses it directly via state.
+manager = PumpManager()
 
-    try:
-        step_for_seconds_multi(handle, pumps_list, hz, seconds)
-    finally:
-        for pump in pumps_list:
-            enable_driver(handle, pump, False)
+# --- Legacy Procedural Wrappers (For backward compatibility with api.py / control.py if not fully migrated) ---
+# It is highly recommended to update 'api.py' and 'control.py' to use `manager` directly, 
+# but these wrappers ensure nothing completely breaks.
 
-    result = {
-        "pumps": pumps_list,
-        "seconds": seconds,
-        "hz": hz,
-        "direction": direction,
-        "status": "ok",
-    }
+def _ensure_manager_started():
+    if manager._handle is None:
+        manager.startup()
 
-    # Log to master.csv
-    try:
-        master_log.log_event(
-            "pump_run_multi_seconds",
-            source="pumps.run_pumps_seconds",
-            pumps=",".join(pumps_list),
-            seconds=seconds,
-            hz=hz,
-            direction=direction,
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log pump_run_multi_seconds to master.csv: {e}")
+def run_pump_seconds(pump: str, seconds: float, hz: float = DEFAULT_HZ, direction: str = DEFAULT_DIR) -> Dict[str, Any]:
+    _ensure_manager_started()
+    return manager.get_pump(pump).run_for_seconds(seconds, hz, direction)
 
-    return result
+def run_pumps_seconds(pumps_list: List[str], seconds: float, hz: float = DEFAULT_HZ, direction: str = DEFAULT_DIR) -> Dict[str, Any]:
+    _ensure_manager_started()
+    return manager.run_multi_seconds(pumps_list, seconds, hz, direction)
 
+def calibrate_pump_seconds(pump: str, run_seconds: float, hz: float = DEFAULT_HZ) -> Dict[str, Any]:
+    _ensure_manager_started()
+    return manager.get_pump(pump).calibrate(run_seconds, hz)
 
-@_with_handle
-def calibrate_pump_seconds(
-    handle: int,
-    pump: str,
-    run_seconds: float,
-    hz: float = DEFAULT_HZ,
-) -> Dict[str, Any]:
-    """
-    Run the pump for a fixed time to allow measuring mL/s externally.
-    """
-    set_direction(handle, pump, DEFAULT_DIR)
-    enable_driver(handle, pump, True)
-    try:
-        step_for_seconds(handle, pump, hz, run_seconds)
-    finally:
-        enable_driver(handle, pump, False)
-
-    result = {
-        "pump": pump,
-        "run_seconds": run_seconds,
-        "hz": hz,
-        "message": (
-            f"Calibration run complete. Measure mL in your cylinder, then "
-            f"POST the measured ml_per_sec to /pump/calibration for '{pump}'."
-        ),
-    }
-
-    # Log to master.csv
-    try:
-        master_log.log_event(
-            "pump_calibration_run",
-            source="pumps.calibrate_pump_seconds",
-            pump=pump,
-            seconds=run_seconds,
-            hz=hz,
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log pump_calibration_run to master.csv: {e}")
-
-    return result
-
-
-@_with_handle
-def run_pump_ml(
-    handle: int,
-    pump: str,
-    ml: float,
-    hz: float = DEFAULT_HZ,
-    direction: str = DEFAULT_DIR,
-) -> Dict[str, Any]:
-    """
-    Run pump based on target volume, using JSON calibration (ml/s).
-    """
-    rate = config_store.get_pump_calibration(pump) or 0.0
-    if rate <= 0.0:
-        raise RuntimeError(
-            f"Pump '{pump}' has ml_per_sec=0. Set calibration via /pump/calibration first."
-        )
-
-    seconds = ml / rate
-    set_direction(handle, pump, direction)
-    enable_driver(handle, pump, True)
-    try:
-        step_for_seconds(handle, pump, hz, seconds)
-    finally:
-        enable_driver(handle, pump, False)
-
-    result = {
-        "pump": pump,
-        "ml": ml,
-        "hz": hz,
-        "direction": direction,
-        "rate_ml_per_sec": rate,
-        "seconds": seconds,
-        "status": "ok",
-    }
-
-    # Log to master.csv
-    try:
-        master_log.log_event(
-            "pump_run_ml",
-            source="pumps.run_pump_ml",
-            pump=pump,
-            ml=ml,
-            seconds=seconds,
-            hz=hz,
-            direction=direction,
-            note=f"rate_ml_per_sec={rate}",
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log pump_run_ml to master.csv: {e}")
-
-    return result
+def run_pump_ml(pump: str, ml: float, hz: float = DEFAULT_HZ, direction: str = DEFAULT_DIR) -> Dict[str, Any]:
+    _ensure_manager_started()
+    return manager.get_pump(pump).dispense_ml(ml, hz, direction)

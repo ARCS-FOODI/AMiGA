@@ -101,10 +101,10 @@ def _ensure_daynight_enabled() -> None:
     """
     Force light config into daynight mode with our schedule.
     """
-    cfg = light.get_light_config()
+    cfg = light.manager.main_light.get_config()
     if cfg.get("mode") != "daynight":
         # IMPORTANT: light.set_light_config(mode, day_start, day_end)
-        light.set_light_config("daynight", LIGHT_ON_START, LIGHT_ON_END)
+        light.manager.main_light.set_config("daynight", LIGHT_ON_START, LIGHT_ON_END)
         master_log.log_event(
             "scheduler_light_daynight_enabled",
             source="grow_scheduler._ensure_daynight_enabled",
@@ -113,7 +113,7 @@ def _ensure_daynight_enabled() -> None:
 
 
 def _apply_daynight_now() -> None:
-    light.apply_daynight_now()
+    light.manager.main_light.apply_daynight_now()
 
 
 def _food_due(now: datetime, last_food_date: str) -> bool:

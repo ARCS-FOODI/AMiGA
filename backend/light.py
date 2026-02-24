@@ -1,257 +1,211 @@
 # backend/light.py
 from __future__ import annotations
 
-from typing import Dict, Any
 import time
+import threading
 from datetime import datetime, time as dtime
+from typing import Dict, Any
 
 import lgpio
 
 from .settings import CHIP, LIGHT_PIN
 from . import master_log
 
-# Track the logical state of the light in software.
-# False = OFF, True = ON
-_LIGHT_STATE: bool = False
 
-# Day/night configuration (in-memory for now)
-# mode: "manual" = only change via API
-#       "daynight" = follow time window when apply_daynight_now() is called
-_LIGHT_MODE: str = "manual"
-_DAY_START: dtime = dtime(19, 0)  # 19:00 (7 PM)
-_DAY_END: dtime = dtime(7, 0)     # 07:00 (7 AM)
-
-
-def _with_handle(fn):
+class GrowLight:
     """
-    Small helper: open / close the gpiochip around each operation.
+    Object-Oriented representation of the Grow Light Relay.
+    Manages its own GPIO state and day/night scheduling logic.
     """
-    def wrapper(*args, **kwargs):
-        handle = lgpio.gpiochip_open(CHIP)
+    def __init__(self, pin: int = LIGHT_PIN, chip: int = CHIP):
+        self.pin = pin
+        self.chip = chip
+        self._handle = None
+        self._lock = threading.Lock()
+        
+        # Logical state
+        self.is_on = False
+        
+        # Schedule config
+        self.mode = "manual"
+        self.day_start = dtime(19, 0)
+        self.day_end = dtime(7, 0)
+
+    def initialize(self, handle: int) -> None:
+        """Bind the light to an open GPIO handle and set as output."""
+        self._handle = handle
+        # Default to OFF on boot
+        level = self._level_for_state(False)
+        lgpio.gpio_claim_output(self._handle, self.pin, level)
+        self.is_on = False
+
+    def _level_for_state(self, on: bool) -> int:
+        """
+        Map logical light state to the actual GPIO level.
+        Relay is wired ACTIVE-LOW:
+          - GPIO LOW (0)  -> light ON
+          - GPIO HIGH (1) -> light OFF
+        """
+        return 0 if on else 1
+
+    def set_state(self, on: bool, log_source: str = "GrowLight.set_state") -> Dict[str, Any]:
+        """Turn the light ON or OFF by driving the relay pin."""
+        if not self._handle:
+            raise RuntimeError("GrowLight is not initialized.")
+
+        with self._lock:
+            level = self._level_for_state(on)
+            lgpio.gpio_write(self._handle, self.pin, level)
+            self.is_on = on
+
         try:
-            return fn(handle, *args, **kwargs)
-        finally:
-            lgpio.gpiochip_close(handle)
-    return wrapper
+            master_log.log_event(
+                "light_state",
+                source=log_source,
+                light_on=on,
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log light_state to master.csv: {e}")
 
+        return {"light_pin": self.pin, "on": self.is_on}
 
-def _level_for_state(on: bool) -> int:
-    """
-    Map logical light state to the actual GPIO level.
+    def toggle(self) -> Dict[str, Any]:
+        """Flip the light from ON→OFF or OFF→ON."""
+        return self.set_state(not self.is_on, log_source="GrowLight.toggle")
 
-    Relay is wired ACTIVE-LOW:
-      - GPIO LOW (0)  -> light ON
-      - GPIO HIGH (1) -> light OFF
-    """
-    return 0 if on else 1
+    def get_state(self) -> Dict[str, Any]:
+        """Return logical state without touching hardware."""
+        return {"light_pin": self.pin, "on": self.is_on}
 
+    def set_after_delay(self, on: bool, delay: float) -> None:
+        """Sleep, then set state (used by BackgroundTasks)."""
+        time.sleep(delay)
+        self.set_state(on, log_source="GrowLight.set_after_delay")
 
-def _parse_hhmm(value: str) -> dtime:
-    """
-    Parse a 'HH:MM' or 'HH:MM:SS' string into a time object.
-    Raises ValueError on bad format.
-    """
-    parts = value.strip().split(":")
-    if len(parts) < 2:
-        raise ValueError("Time must be in HH:MM or HH:MM:SS format")
-    hour = int(parts[0])
-    minute = int(parts[1])
-    second = int(parts[2]) if len(parts) > 2 else 0
-    return dtime(hour, minute, second)
+    def _parse_hhmm(self, value: str) -> dtime:
+        parts = value.strip().split(":")
+        if len(parts) < 2:
+            raise ValueError("Time must be in HH:MM or HH:MM:SS format")
+        hour = int(parts[0])
+        minute = int(parts[1])
+        second = int(parts[2]) if len(parts) > 2 else 0
+        return dtime(hour, minute, second)
 
+    def set_config(self, mode: str, day_start: str, day_end: str) -> Dict[str, Any]:
+        mode = mode.lower()
+        if mode not in ("manual", "daynight"):
+            raise ValueError("mode must be 'manual' or 'daynight'")
 
-def _is_within_window(now: datetime) -> bool:
-    """
-    Return True if 'now' is within the configured [DAY_START, DAY_END) window.
+        self.mode = mode
+        self.day_start = self._parse_hhmm(day_start)
+        self.day_end = self._parse_hhmm(day_end)
 
-    Supports both:
-      - Normal window (start < end), e.g. 07:00 -> 19:00
-      - Overnight window (start > end), e.g. 19:00 -> 07:00 next day
-    """
-    global _DAY_START, _DAY_END
-    t = now.time()
+        try:
+            master_log.log_event(
+                "light_config_set",
+                source="GrowLight.set_config",
+                note=f"mode={mode}, day_start={day_start}, day_end={day_end}",
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log light_config_set: {e}")
 
-    if _DAY_START < _DAY_END:
-        # Same-day window
-        return _DAY_START <= t < _DAY_END
-    else:
-        # Overnight window (e.g. 19:00–07:00)
-        return not (_DAY_END <= t < _DAY_START)
+        return self.get_config()
 
-
-@_with_handle
-def set_light(handle: int, on: bool) -> Dict[str, Any]:
-    """
-    Turn the light ON or OFF by driving the relay pin.
-
-    This updates both the physical GPIO and the in-memory state.
-    """
-    global _LIGHT_STATE
-
-    level = _level_for_state(on)
-
-    # Configure as output and drive the desired level immediately.
-    lgpio.gpio_claim_output(handle, LIGHT_PIN, level)
-    lgpio.gpio_write(handle, LIGHT_PIN, level)
-
-    _LIGHT_STATE = on
-
-    # Log to master.csv
-    try:
-        master_log.log_event(
-            "light_state",
-            source="light.set_light",
-            light_on=on,
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log light_state to master.csv: {e}")
-
-    return {
-        "light_pin": LIGHT_PIN,
-        "on": _LIGHT_STATE,
-    }
-
-
-def get_light_state() -> Dict[str, Any]:
-    """
-    Return the last commanded state of the light WITHOUT touching hardware.
-
-    This avoids changing the relay just by asking for its state.
-    """
-    return {
-        "light_pin": LIGHT_PIN,
-        "on": _LIGHT_STATE,
-    }
-
-
-@_with_handle
-def toggle_light(handle: int) -> Dict[str, Any]:
-    """
-    Flip the light from ON→OFF or OFF→ON based on the in-memory state.
-    """
-    global _LIGHT_STATE
-
-    new_state = not _LIGHT_STATE
-    level = _level_for_state(new_state)
-
-    lgpio.gpio_claim_output(handle, LIGHT_PIN, level)
-    lgpio.gpio_write(handle, LIGHT_PIN, level)
-
-    _LIGHT_STATE = new_state
-
-    # Log to master.csv (optional separate event from direct set_light)
-    try:
-        master_log.log_event(
-            "light_state",
-            source="light.toggle_light",
-            light_on=_LIGHT_STATE,
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log light_state (toggle) to master.csv: {e}")
-
-    return {
-        "light_pin": LIGHT_PIN,
-        "on": _LIGHT_STATE,
-    }
-
-
-def set_light_after_delay(on: bool, delay: float) -> None:
-    """
-    Sleep for `delay` seconds, then set the light state.
-
-    Intended to be used from a FastAPI BackgroundTask so the API call
-    returns immediately while this runs in a worker thread.
-    """
-    time.sleep(delay)
-    set_light(on)
-
-
-# ---------- Day/Night configuration & logic ----------
-
-
-def get_light_config() -> Dict[str, Any]:
-    """
-    Return the current light mode + day/night window (as strings) plus state.
-    """
-    return {
-        "mode": _LIGHT_MODE,
-        "day_start": _DAY_START.strftime("%H:%M:%S"),
-        "day_end": _DAY_END.strftime("%H:%M:%S"),
-        "state": get_light_state(),
-    }
-
-
-def set_light_config(mode: str, day_start: str, day_end: str) -> Dict[str, Any]:
-    """
-    Update the light mode and day/night window.
-
-    mode: "manual" or "daynight"
-    day_start/day_end: "HH:MM" or "HH:MM:SS"
-    """
-    global _LIGHT_MODE, _DAY_START, _DAY_END
-
-    mode = mode.lower()
-    if mode not in ("manual", "daynight"):
-        raise ValueError("mode must be 'manual' or 'daynight'")
-
-    start_time = _parse_hhmm(day_start)
-    end_time = _parse_hhmm(day_end)
-
-    _LIGHT_MODE = mode
-    _DAY_START = start_time
-    _DAY_END = end_time
-
-    # Log config change to master.csv
-    try:
-        master_log.log_event(
-            "light_config_set",
-            source="light.set_light_config",
-            note=f"mode={mode}, day_start={day_start}, day_end={day_end}",
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log light_config_set to master.csv: {e}")
-
-    return get_light_config()
-
-
-def apply_daynight_now() -> Dict[str, Any]:
-    """
-    Evaluate the day/night rule and, if mode == 'daynight', set the light
-    ON/OFF accordingly based on the current time.
-
-    Returns a summary dict with:
-      - mode
-      - applied (bool)
-      - within_window (bool | None)
-      - state (light state dict)
-    """
-    now = datetime.now().astimezone()
-    if _LIGHT_MODE != "daynight":
-        # Do nothing; just report current state
+    def get_config(self) -> Dict[str, Any]:
         return {
-            "mode": _LIGHT_MODE,
-            "applied": False,
-            "within_window": None,
-            "state": get_light_state(),
+            "mode": self.mode,
+            "day_start": self.day_start.strftime("%H:%M:%S"),
+            "day_end": self.day_end.strftime("%H:%M:%S"),
+            "state": self.get_state(),
         }
 
-    within = _is_within_window(now)
-    result = set_light(within)
+    def _is_within_window(self, now: datetime) -> bool:
+        t = now.time()
+        if self.day_start < self.day_end:
+            return self.day_start <= t < self.day_end
+        else:
+            return not (self.day_end <= t < self.day_start)
 
-    # Log application to master.csv
-    try:
-        master_log.log_event(
-            "light_daynight_apply",
-            source="light.apply_daynight_now",
-            light_on=result.get("on"),
-            note=f"within_window={within}",
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log light_daynight_apply to master.csv: {e}")
+    def apply_daynight_now(self) -> Dict[str, Any]:
+        now = datetime.now().astimezone()
+        if self.mode != "daynight":
+            return {
+                "mode": self.mode,
+                "applied": False,
+                "within_window": None,
+                "state": self.get_state(),
+            }
 
-    return {
-        "mode": _LIGHT_MODE,
-        "applied": True,
-        "within_window": within,
-        "state": result,
-    }
+        within = self._is_within_window(now)
+        # Only update hardware if state actually needs to change, or force it
+        result = self.set_state(within, log_source="GrowLight.apply_daynight_now")
+
+        try:
+            master_log.log_event(
+                "light_daynight_apply",
+                source="GrowLight.apply_daynight_now",
+                light_on=result.get("on"),
+                note=f"within_window={within}",
+            )
+        except Exception as e:
+            print(f"[LOG] Failed to log light_daynight_apply: {e}")
+
+        return {
+            "mode": self.mode,
+            "applied": True,
+            "within_window": within,
+            "state": result,
+        }
+
+
+class LightManager:
+    """Global manager for lighting hardware."""
+    def __init__(self, chip_index: int = CHIP):
+        self.chip_index = chip_index
+        self._handle = None
+        self.main_light = GrowLight(pin=LIGHT_PIN, chip=self.chip_index)
+
+    def startup(self) -> None:
+        self._handle = lgpio.gpiochip_open(self.chip_index)
+        self.main_light.initialize(self._handle)
+
+    def shutdown(self) -> None:
+        if self._handle is not None:
+            # Safely turn light off on shutdown
+            self.main_light.set_state(False, log_source="LightManager.shutdown")
+            lgpio.gpiochip_close(self._handle)
+            self._handle = None
+
+
+# Global singleton
+manager = LightManager()
+
+# --- Legacy Procedural Wrappers ---
+def _ensure_manager():
+    if manager._handle is None:
+        manager.startup()
+
+def set_light(on: bool) -> Dict[str, Any]:
+    _ensure_manager()
+    return manager.main_light.set_state(on)
+
+def get_light_state() -> Dict[str, Any]:
+    return manager.main_light.get_state()
+
+def toggle_light() -> Dict[str, Any]:
+    _ensure_manager()
+    return manager.main_light.toggle()
+
+def set_light_after_delay(on: bool, delay: float) -> None:
+    _ensure_manager()
+    manager.main_light.set_after_delay(on, delay)
+
+def get_light_config() -> Dict[str, Any]:
+    return manager.main_light.get_config()
+
+def set_light_config(mode: str, day_start: str, day_end: str) -> Dict[str, Any]:
+    return manager.main_light.set_config(mode, day_start, day_end)
+
+def apply_daynight_now() -> Dict[str, Any]:
+    _ensure_manager()
+    return manager.main_light.apply_daynight_now()

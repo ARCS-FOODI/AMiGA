@@ -14,11 +14,11 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
 
 # Global Enable Pin (Active LOW) shared by all stepper motor drivers
 # E.g. connect both drivers' EN pins to this physical board pin
-GLOBAL_PUMP_EN = 12
+GLOBAL_PUMP_EN = 17
 
 # GPIO chip index
 CHIP = 0  # usually /dev/gpiochip0
-LIGHT_PIN = 26
+LIGHT_PIN = 23
 # Sensor defaults
 DEFAULT_ADDR   = 0x48
 DEFAULT_GAIN   = 1          # ±4.096 V

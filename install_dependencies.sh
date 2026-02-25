@@ -40,6 +40,13 @@ echo "✅ Backend dependency step complete."
 # 2. Setup Frontend
 echo ""
 echo "[2/2] Setting up Vite frontend environment..."
+
+echo "Checking if npm and nodejs are installed..."
+if ! command -v npm &> /dev/null; then
+    echo "Installing nodejs and npm (may require sudo password)..."
+    sudo apt-get update && sudo apt-get install -y nodejs npm || echo "⚠️ Warning: Failed to install node/npm."
+fi
+
 cd "$TARGET_DIR/frontend"
 
 echo "Installing npm dependencies..."

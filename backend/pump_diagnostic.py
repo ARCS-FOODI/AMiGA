@@ -10,7 +10,7 @@ except ImportError:
     sys.exit(1)
 
 # Ensure user understands this requires a Python TMC2209 library to actually communicate over serial.
-# The standard library for Raspberry Pi is: pip install TMC2209
+# The standard library for Raspberry Pi is: pip install TMC2209-PY
 try:
     from TMC_2209.TMC_2209_StepperDriver import *
     TMC_AVAILABLE = True
@@ -76,7 +76,7 @@ def main():
     if not TMC_AVAILABLE:
         print("⚠️ ERROR: The 'TMC2209' python library is not installed.")
         print("To run the test, install it using the AMiGA virtual environment:")
-        print("   /home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/pip install TMC2209")
+        print("   /home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/pip install TMC2209-PY")
         sys.exit(1)
         
     print("Running Hardware UART Tests...")

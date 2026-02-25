@@ -9,9 +9,12 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
     "water": {  # pump for water
         "STEP": 16,
         "DIR": 26,
-        "EN": 12,
     },
 }
+
+# Global Enable Pin (Active LOW) shared by all stepper motor drivers
+# E.g. connect both drivers' EN pins to this physical board pin
+GLOBAL_PUMP_EN = 12
 
 # GPIO chip index
 CHIP = 0  # usually /dev/gpiochip0

@@ -60,7 +60,7 @@ def run_real_uart_diagnostic(pump_name, serial_port, address):
 
 def main():
     parser = argparse.ArgumentParser(description="Pump TMC2209 UART Diagnostic Tool")
-    parser.add_argument("--port", type=str, default="/dev/ttyAMA0", help="Serial port to use (e.g. /dev/ttyAMA0)")
+    parser.add_argument("--port", type=str, default="/dev/serial0", help="Serial port to use (e.g. /dev/serial0)")
     args = parser.parse_args()
 
     print("==========================================================")

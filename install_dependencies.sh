@@ -41,12 +41,29 @@ echo "✅ Backend dependency step complete."
 echo ""
 echo "[2/2] Setting up Vite frontend environment..."
 
-echo "Checking if npm and nodejs are installed..."
-if ! command -v npm &> /dev/null || ! command -v node &> /dev/null; then
+echo "Checking Node.js and npm versions..."
+if ! command -v node &> /dev/null; then
+    echo "Node.js is not installed."
     echo "Installing up-to-date nodejs and npm (may require sudo password)..."
     # Using NodeSource to get Node.js 22.x instead of the older default apt version
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - || echo "⚠️ Warning: Failed to add NodeSource repository."
     sudo apt-get install -y nodejs || echo "⚠️ Warning: Failed to install nodejs."
+else
+    # Extract the major version number (e.g., 18 from v18.20.4)
+    NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        echo "⚠️ Your Node.js version (v$NODE_VERSION) is older than the recommended v20+."
+        echo "Attempting to update Node.js to version 22.x using NodeSource (may require sudo password)..."
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - || echo "⚠️ Warning: Failed to add NodeSource repository."
+        sudo apt-get install -y nodejs || echo "⚠️ Warning: Failed to update nodejs. You may need to update manually from https://nodejs.org/"
+    else
+        echo "Node.js version (v$NODE_VERSION) is up to date."
+    fi
+fi
+
+if ! command -v npm &> /dev/null; then
+    echo "npm is missing entirely, attempting to install..."
+    sudo apt-get install -y npm || echo "⚠️ Warning: Failed to install npm."
 fi
 
 cd "$TARGET_DIR/frontend"

@@ -3,7 +3,7 @@ import sys
 import argparse
 
 try:
-    from settings import PUMP_PINS, SIMULATE
+    from settings import PUMP_PINS
 except ImportError:
     print("Error: Could not import settings. Make sure you run this script from the backend directory:")
     print("cd /home/siyyo/Documents/arcs_foodi/AMiGA/backend && /home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/python pump_diagnostic.py")
@@ -12,7 +12,8 @@ except ImportError:
 # Ensure user understands this requires a Python TMC2209 library to actually communicate over serial.
 # The standard library for Raspberry Pi is: pip install TMC2209-PY
 try:
-    from TMC_2209.TMC_2209_StepperDriver import *
+    from TMC2209_PY.TMC2209 import TMC2209Configure
+    from TMC2209_PY.uart import UART
     TMC_AVAILABLE = True
 except ImportError:
     TMC_AVAILABLE = False
@@ -26,34 +27,30 @@ def run_real_uart_diagnostic(pump_name, serial_port, address):
     
     try:
         # Initialize the TMC driver over Serial
-        tmc = TMC_2209(pin_step=-1, pin_dir=-1, pin_en=-1) # We use lgpio for Step/Dir, just need UART here
-        tmc.set_uart_pin(tx_pin=14, rx_pin=15) # Standard Pi UART pins
-        tmc.set_motor_address(address)
+        uart = UART(serial_port, 115200)
+        tmc = TMC2209Configure(uart, MS1=-1, MS2=-1, EN=-1, node_address=address)
         
         # Read Registers
-        sg_result = tmc.get_stallguard_result()
-        is_open_load_a, is_open_load_b = tmc.get_open_load()
-        irun = tmc.get_run_current()
-        ihold = tmc.get_hold_current()
-        otpw, ot = tmc.get_overtemperature()
-        s2ga, s2gb = tmc.get_short_to_ground()
+        sg_result = tmc.read_SG_RESULT()
+        tmc.read_DRV_STATUS()
+        tmc.read_IHOLD_IRUN()
         
         print(f"\n--- 📡 REAL UART Diagnostic Report for Pump: '{pump_name}' ---")
         print("[1] Connection Status")
-        print(f"    > Motor Coil A Connected: {not is_open_load_a}")
-        print(f"    > Motor Coil B Connected: {not is_open_load_b}")
+        print(f"    > Motor Coil A Connected: {not tmc.drv_status.ola}")
+        print(f"    > Motor Coil B Connected: {not tmc.drv_status.olb}")
         
         print("\n[2] StallGuard4™ Load Reading")
         print(f"    > Current Load Value:     {sg_result} (0=Stalled, 1023=No Load)")
 
         print("\n[3] Power Configuration")
-        print(f"    > Run Current (IRUN):     {irun} mA")
-        print(f"    > Hold Current (IHOLD):   {ihold} mA")
+        print(f"    > Run Current (IRUN):     {tmc.ihold_irun.IRUN}")
+        print(f"    > Hold Current (IHOLD):   {tmc.ihold_irun.IHOLD}")
 
         print("\n[4] Driver Temperature & Errors")
-        print(f"    > Overtemperature Warning: {otpw}")
-        print(f"    > Overtemperature Error:   {ot}")
-        print(f"    > Short to Ground (A/B):   {s2ga} / {s2gb}")
+        print(f"    > Overtemperature Warning: {bool(tmc.drv_status.otpw)}")
+        print(f"    > Overtemperature Error:   {bool(tmc.drv_status.ot)}")
+        print(f"    > Short to Ground (A/B):   {bool(tmc.drv_status.s2ga)} / {bool(tmc.drv_status.s2gb)}")
         print("-" * 60)
         
     except Exception as e:
@@ -74,12 +71,12 @@ def main():
     print("==========================================================\n")
 
     if not TMC_AVAILABLE:
-        print("⚠️ ERROR: The 'TMC2209' python library is not installed.")
-        print("To run the test, install it using the AMiGA virtual environment:")
+        print("⚠️ ERROR: The 'TMC2209-PY' python library is not installed.")
+        print("To run the test on hardware, install it using the AMiGA virtual environment:")
         print("   /home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/pip install TMC2209-PY")
         sys.exit(1)
         
-    print("Running Hardware UART Tests...")
+    print(f"Running Hardware UART Tests...")
     # Assume addresses 0 and 1 for food and water pumps for this test
     address_map = {"food": 0, "water": 1} 
     for pump_name in PUMP_PINS.keys():

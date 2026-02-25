@@ -7,9 +7,9 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
         "DIR": 15,   
     },
     "water": {  # pump for water
-        "STEP": 18,
-        "DIR": 22,
-        "EN": 11,
+        "STEP": 36,
+        "DIR": 37,
+        "EN": 32,
     },
 }
 

@@ -5,9 +5,12 @@ echo "========================================="
 echo "  Starting AMiGA Simulation Environment  "
 echo "========================================="
 
+# Get the directory where the script is located
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+
 # 1. Start the FastAPI Backend in the background
 echo "[1/2] Starting FastAPI Backend on port 8000..."
-cd /home/siyyo/Documents/arcs_foodi/AMiGA
+cd "$TARGET_DIR"
 # Activate the virtual environment so fastapi/uvicorn are found
 source .venv/bin/activate
 # Set the environment variable to trigger Mock classes
@@ -24,7 +27,7 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
 fi
 echo "✅ Backend started successfully (PID: $BACKEND_PID)"
 echo "[2/2] Starting Vite Frontend on port 5173..."
-cd /home/siyyo/Documents/arcs_foodi/AMiGA/frontend
+cd "$TARGET_DIR/frontend"
 npm run dev &
 FRONTEND_PID=$!
 

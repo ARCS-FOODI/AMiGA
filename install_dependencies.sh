@@ -10,10 +10,13 @@ echo "========================================="
 # Stop on first error
 set -e
 
+# Get the directory where the script is located
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+
 # 1. Setup Backend
 echo ""
 echo "[1/2] Setting up Python backend environment..."
-cd /home/siyyo/Documents/arcs_foodi/AMiGA
+cd "$TARGET_DIR"
 
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment in .venv..."
@@ -31,7 +34,7 @@ echo "✅ Backend dependencies installed successfully."
 # 2. Setup Frontend
 echo ""
 echo "[2/2] Setting up Vite frontend environment..."
-cd /home/siyyo/Documents/arcs_foodi/AMiGA/frontend
+cd "$TARGET_DIR/frontend"
 
 echo "Installing npm dependencies..."
 npm install

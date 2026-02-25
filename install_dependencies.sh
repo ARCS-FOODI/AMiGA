@@ -42,9 +42,11 @@ echo ""
 echo "[2/2] Setting up Vite frontend environment..."
 
 echo "Checking if npm and nodejs are installed..."
-if ! command -v npm &> /dev/null; then
-    echo "Installing nodejs and npm (may require sudo password)..."
-    sudo apt-get update && sudo apt-get install -y nodejs npm || echo "⚠️ Warning: Failed to install node/npm."
+if ! command -v npm &> /dev/null || ! command -v node &> /dev/null; then
+    echo "Installing up-to-date nodejs and npm (may require sudo password)..."
+    # Using NodeSource to get Node.js 22.x instead of the older default apt version
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - || echo "⚠️ Warning: Failed to add NodeSource repository."
+    sudo apt-get install -y nodejs || echo "⚠️ Warning: Failed to install nodejs."
 fi
 
 cd "$TARGET_DIR/frontend"

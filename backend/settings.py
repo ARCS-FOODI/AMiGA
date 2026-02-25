@@ -38,5 +38,6 @@ DEFAULT_VOTE_K      = 2     # need at least K of 4 over threshold
 DEFAULT_COOLDOWN_S  = 60.0  # wait after an irrigation cycle
 DEFAULT_IRR_SEC     = 5.0   # seconds to run pump when triggered
 
+import os
 # Set to True to explicitely mock Raspberry Pi GPIO hardware (For Mac/Windows UI dev)
-SIMULATE = False
+SIMULATE = True if os.environ.get("AMIGA_SIMULATE", "0") == "1" else False

@@ -29,21 +29,45 @@ def parse_args():
     return parser.parse_args()
 
 
+# Mapping from physical board pins (1-40) to BCM GPIO numbers for Raspberry Pi
+BOARD_TO_BCM = {
+    3: 2, 5: 3, 7: 4, 8: 14, 10: 15, 11: 17, 12: 18, 13: 27, 15: 22,
+    16: 23, 18: 24, 19: 10, 21: 9, 22: 25, 23: 11, 24: 8, 26: 7, 27: 0,
+    28: 1, 29: 5, 31: 6, 32: 12, 33: 13, 35: 19, 36: 16, 37: 26, 38: 20,
+    40: 21
+}
+
+def get_bcm_pin(board_pin, pin_name):
+    if board_pin is None:
+        return None
+    if board_pin not in BOARD_TO_BCM:
+        print(f"Warning: Pin {board_pin} for {pin_name} is not a valid GPIO pin (it might be Ground or Power).")
+        return board_pin # Return as-is, though it will likely fail in lgpio
+    bcm_pin = BOARD_TO_BCM[board_pin]
+    return bcm_pin
+
+
 def test_pump(pump_name, duration_sec, hz, direction):
     pins = PUMP_PINS[pump_name]
-    step_pin = pins.get("STEP")
-    dir_pin = pins.get("DIR")
-    en_pin = pins.get("EN")
+    
+    # Translate physical board pins to BCM pins
+    step_pin_board = pins.get("STEP")
+    dir_pin_board = pins.get("DIR")
+    en_pin_board = pins.get("EN")
+    
+    step_pin = get_bcm_pin(step_pin_board, "STEP")
+    dir_pin = get_bcm_pin(dir_pin_board, "DIR")
+    en_pin = get_bcm_pin(en_pin_board, "EN")
 
     if step_pin is None or dir_pin is None:
         print(f"Error: Pump '{pump_name}' is missing STEP or DIR pins in settings.py")
         return
 
     print(f"\n[Barebones Pump Test] Testing '{pump_name}' pump")
-    print(f" - STEP Pin: {step_pin}")
-    print(f" - DIR Pin:  {dir_pin}")
+    print(f" - STEP Pin: Board {step_pin_board} -> BCM {step_pin}")
+    print(f" - DIR Pin:  Board {dir_pin_board} -> BCM {dir_pin}")
     if en_pin is not None:
-        print(f" - EN Pin:   {en_pin}")
+        print(f" - EN Pin:   Board {en_pin_board} -> BCM {en_pin}")
     
     print(f" - Duration: {duration_sec} seconds")
     print(f" - Speed:    {hz} Hz")

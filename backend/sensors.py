@@ -7,12 +7,6 @@ import threading
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-import board
-import busio
-import adafruit_ads1x15.ads1115 as ADS
-from adafruit_ads1x15.analog_in import AnalogIn
-import lgpio
-
 from .settings import (
     DEFAULT_ADDR,
     DEFAULT_GAIN,
@@ -20,8 +14,42 @@ from .settings import (
     DEFAULT_INTSEC,
     DEFAULT_DO_PIN,
     CHIP,
+    SIMULATE,
 )
 from . import master_log
+
+if not SIMULATE:
+    import board
+    import busio
+    import adafruit_ads1x15.ads1115 as ADS
+    from adafruit_ads1x15.analog_in import AnalogIn
+    import lgpio
+else:
+    import random
+    class MockI2C:
+        def __init__(self, *args, **kwargs): pass
+    class MockADS: 
+        def __init__(self, *args, **kwargs): self.gain = 1
+    class MockAnalogIn:
+        def __init__(self, ads, chan):
+            self._voltage = random.uniform(0.5, 3.2)
+        @property
+        def voltage(self):
+            # random sensor jitter
+            self._voltage += random.uniform(-0.15, 0.15)
+            self._voltage = max(0.0, min(self._voltage, 3.3))
+            return self._voltage
+    class MockLgpio:
+        def gpiochip_open(self, chip): return 999
+        def gpiochip_close(self, handle): pass
+        def gpio_claim_input(self, handle, pin): pass
+        def gpio_read(self, handle, pin): return 1 # 1 = Dry
+
+    board = type("board", (), {"SCL": 1, "SDA": 2})
+    busio = type("busio", (), {"I2C": MockI2C})
+    ADS = type("ADS", (), {"ADS1115": MockADS})
+    AnalogIn = MockAnalogIn
+    lgpio = MockLgpio()
 
 
 class SensorArray:

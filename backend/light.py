@@ -6,10 +6,18 @@ import threading
 from datetime import datetime, time as dtime
 from typing import Dict, Any
 
-import lgpio
-
-from .settings import CHIP, LIGHT_PIN
+from .settings import CHIP, LIGHT_PIN, SIMULATE
 from . import master_log
+
+if not SIMULATE:
+    import lgpio
+else:
+    class MockLgpio:
+        def gpiochip_open(self, chip): return 999
+        def gpiochip_close(self, handle): pass
+        def gpio_claim_output(self, handle, pin, level): pass
+        def gpio_write(self, handle, pin, level): pass
+    lgpio = MockLgpio()
 
 
 class GrowLight:
@@ -57,6 +65,7 @@ class GrowLight:
             level = self._level_for_state(on)
             lgpio.gpio_write(self._handle, self.pin, level)
             self.is_on = on
+            if SIMULATE: print(f"[MOCK] GrowLight toggled: {'ON' if on else 'OFF'}")
 
         try:
             master_log.log_event(

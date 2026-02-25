@@ -5,10 +5,18 @@ import time
 import threading
 from typing import Dict, Any, List
 
-import lgpio
-
-from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR
+from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE
 from . import config_store, master_log
+
+if not SIMULATE:
+    import lgpio
+else:
+    class MockLgpio:
+        def gpiochip_open(self, chip): return 999
+        def gpiochip_close(self, handle): pass
+        def gpio_claim_output(self, handle, pin, level): pass
+        def gpio_write(self, handle, pin, level): pass
+    lgpio = MockLgpio()
 
 
 class StepperPump:
@@ -96,6 +104,7 @@ class StepperPump:
             raise RuntimeError(f"Pump '{self.name}' is already running.")
 
         self.is_running = True
+        if SIMULATE: print(f"[MOCK] Pump '{self.name}' running for {seconds}s at {hz}Hz ({direction})")
         try:
             self._set_direction(direction)
             self._enable_driver(True)

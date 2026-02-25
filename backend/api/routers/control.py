@@ -1,11 +1,19 @@
 from fastapi import APIRouter, HTTPException, Depends
 
 from ..models import ControlCycleRequest
-from ...pumps import StepperPump
+from ...pumps import StepperPump, manager as pump_manager
+from ...settings import PUMP_PINS
 from ...control import controller
-from .pumps import get_valid_pump
 
 router = APIRouter(prefix="/control", tags=["control"])
+
+def get_valid_pump(pump_name: str) -> StepperPump:
+    if pump_name not in PUMP_PINS:
+        raise HTTPException(status_code=400, detail=f"Unknown pump '{pump_name}'")
+    try:
+        return pump_manager.get_pump(pump_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/cycle-once")
 def api_control_cycle(

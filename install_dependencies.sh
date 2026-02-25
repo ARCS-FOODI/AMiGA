@@ -7,8 +7,8 @@ echo "========================================="
 echo "  Setting up AMiGA Environment"
 echo "========================================="
 
-# Stop on first error
-set -e
+# Prevent script from stopping completely on a single dependency error
+set +e
 
 # Get the directory where the script is located
 TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
@@ -28,8 +28,8 @@ fi
 echo "Activating virtual environment and installing requirements..."
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
-echo "✅ Backend dependencies installed successfully."
+pip install -r requirements.txt || echo "⚠️  Warning: Some backend dependencies failed to install (often due to hardware packages). Continuing anyway..."
+echo "✅ Backend dependency step complete."
 
 # 2. Setup Frontend
 echo ""
@@ -37,8 +37,8 @@ echo "[2/2] Setting up Vite frontend environment..."
 cd "$TARGET_DIR/frontend"
 
 echo "Installing npm dependencies..."
-npm install
-echo "✅ Frontend dependencies installed successfully."
+npm install || echo "⚠️  Warning: npm install had some issues, continuing anyway..."
+echo "✅ Frontend dependency step complete."
 
 echo ""
 echo "========================================="

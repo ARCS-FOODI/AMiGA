@@ -19,7 +19,7 @@ except ImportError:
     TMC_AVAILABLE = False
 
 
-def run_real_uart_diagnostic(pump_name, serial_port, address):
+def run_real_uart_diagnostic(pump_name, serial_port, baudrate, address, en_pin):
     """
     The actual code that runs when you plug the UART wire in and install the library.
     """
@@ -27,8 +27,8 @@ def run_real_uart_diagnostic(pump_name, serial_port, address):
     
     try:
         # Initialize the TMC driver over Serial
-        uart = UART(serial_port, 115200)
-        tmc = TMC2209Configure(uart, MS1=-1, MS2=-1, EN=-1, node_address=address)
+        uart = UART(serial_port, baudrate)
+        tmc = TMC2209Configure(uart, MS1=-1, MS2=-1, EN=en_pin, node_address=address)
         
         # Read Registers
         sg_result = tmc.read_SG_RESULT()
@@ -61,6 +61,9 @@ def run_real_uart_diagnostic(pump_name, serial_port, address):
 def main():
     parser = argparse.ArgumentParser(description="Pump TMC2209 UART Diagnostic Tool")
     parser.add_argument("--port", type=str, default="/dev/serial0", help="Serial port to use (e.g. /dev/serial0)")
+    parser.add_argument("--baudrate", type=int, default=115200, help="Baud rate for UART communication (default: 115200)")
+    parser.add_argument("--addr-food", type=int, default=0, help="UART address for the food pump TMC2209 (default: 0)")
+    parser.add_argument("--addr-water", type=int, default=1, help="UART address for the water pump TMC2209 (default: 1)")
     args = parser.parse_args()
 
     print("==========================================================")
@@ -77,11 +80,12 @@ def main():
         sys.exit(1)
         
     print(f"Running Hardware UART Tests...")
-    # Assume addresses 0 and 1 for food and water pumps for this test
-    address_map = {"food": 0, "water": 1} 
-    for pump_name in PUMP_PINS.keys():
+    # Map addresses based on user arguments
+    address_map = {"food": args.addr_food, "water": args.addr_water} 
+    for pump_name, pins in PUMP_PINS.items():
         addr = address_map.get(pump_name, 0)
-        run_real_uart_diagnostic(pump_name, args.port, addr)
+        en_pin = pins.get("EN", -1)
+        run_real_uart_diagnostic(pump_name, args.port, args.baudrate, addr, en_pin)
 
 if __name__ == "__main__":
     main()

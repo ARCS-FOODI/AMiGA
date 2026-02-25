@@ -21750,3 +21750,24 @@
 2026-02-24T16:04:32.628115-08:00,light_state,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,
 2026-02-24T16:04:32.628342-08:00,light_daynight_apply,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
 2026-02-24T16:04:37.746685-08:00,light_state,LightManager.shutdown,,,,,,,False,,,,,,,,,,,,,,,,
+2026-02-24T18:07:38.829792-08:00,light_config_set,GrowLight.set_config,,,,,,,,,,,,,,,,,,,,,,,"mode=daynight, day_start=06:00, day_end=20:00"
+2026-02-24T18:07:38.830447-08:00,scheduler_light_daynight_enabled,grow_scheduler._ensure_daynight_enabled,,,,,,,,,,,,,,,,,,,,,,,start=06:00 end=20:00
+2026-02-24T18:07:38.830608-08:00,light_state,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,
+2026-02-24T18:07:38.830688-08:00,light_daynight_apply,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2026-02-24T18:07:44.821327-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.8247282799857982,1.11480612399472,2.371896705175277,2.045460192753378,DRY,,,,,,,
+2026-02-24T18:07:44.860364-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.7190989103548483,1.0670954856480341,2.607612655492083,2.334883653070361,DRY,,,,,,,
+2026-02-24T18:07:53.390225-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.8032184074309284,1.1386270012908895,2.615346402930056,2.3365801533125916,DRY,,,,,,,
+2026-02-24T18:07:53.931001-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.570131689068079,1.0825689714805111,2.511874771022221,2.426964310618245,DRY,,,,,,,
+2026-02-24T18:07:54.882361-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.4746093870826067,1.3209709173896609,2.3069593592525184,2.663780409444949,DRY,,,,,,,
+2026-02-24T18:07:58.831383-08:00,light_state,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,
+2026-02-24T18:07:58.831556-08:00,light_daynight_apply,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2026-02-24T18:08:04.884124-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.2197476934349953,1.2919474701246136,2.3673028236704172,2.648073992293931,DRY,,,,,,,
+2026-02-24T18:08:14.883296-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.08302390037873385,1.3792078582809855,2.367781577376364,2.5439918784177373,DRY,,,,,,,
+2026-02-24T18:08:18.831950-08:00,light_state,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,
+2026-02-24T18:08:18.832111-08:00,light_daynight_apply,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2026-02-24T18:08:24.886974-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.3614443472767,1.2607221463212253,2.3963032149904198,2.5895155795471507,DRY,,,,,,,
+2026-02-24T18:08:34.883969-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.723073837768026,1.0941349848948136,2.7503931249151816,2.4128191343066603,DRY,,,,,,,
+2026-02-24T18:08:38.832606-08:00,light_state,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,
+2026-02-24T18:08:38.832855-08:00,light_daynight_apply,GrowLight.apply_daynight_now,,,,,,,True,,,,,,,,,,,,,,,,within_window=True
+2026-02-24T18:08:44.884638-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.9409166181661628,0.766479621746859,2.8601020937955206,2.3215800446240675,DRY,,,,,,,
+2026-02-24T18:08:54.884247-08:00,sensor_read,SensorArray.snapshot,,,,,,,,72,1,5,1,0.8558404490680933,0.7200413112966008,2.842324368520684,2.2480658067398784,DRY,,,,,,,

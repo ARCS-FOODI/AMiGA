@@ -18,40 +18,6 @@ except ImportError:
     TMC_AVAILABLE = False
 
 
-def print_mock_uart_diagnostic(pump_name):
-    """
-    Shows the user exactly what information the UART connection will provide
-    once the single wire is plugged in and the library is installed.
-    """
-    print(f"\n--- 📡 UART Diagnostic Report for Pump: '{pump_name}' ---")
-    
-    # 1. Connection Status
-    print("[1] Connection Status (Open Load Detection)")
-    print("    > Motor Coil A Connected: True   (OK)")
-    print("    > Motor Coil B Connected: False  (❌ WARNING: WIRE DISCONNECTED!)")
-    
-    # 2. Load & Stalls
-    print("\n[2] StallGuard4™ Load Reading (0-1023)")
-    print("    > Current Load Value:     450    (Pumping smoothly)")
-    print("    > Stall Threshold:        50     (Will stop if load drops below 50)")
-
-    # 3. Current & Power Configuration
-    print("\n[3] Power Configuration (No screwdrivers needed)")
-    print("    > Run Current (IRUN):     800 mA")
-    print("    > Hold Current (IHOLD):   100 mA (Cooling down while idle)")
-    print("    > Microstepping (MRES):   1/16   (Smooth motion)")
-
-    # 4. Thermal diagnostics
-    print("\n[4] Driver Temperature & Errors")
-    print("    > Overtemperature Pre-Warning: False (120C+)")
-    print("    > Overtemperature Error:       False (150C+ Shutdown)")
-    print("    > Short to Ground (Coil A):    False")
-    print("    > Short to Ground (Coil B):    False")
-    print("    > Short to Power (Coils):      False")
-    
-    print("-" * 60)
-
-
 def run_real_uart_diagnostic(pump_name, serial_port, address):
     """
     The actual code that runs when you plug the UART wire in and install the library.
@@ -97,7 +63,6 @@ def run_real_uart_diagnostic(pump_name, serial_port, address):
 
 def main():
     parser = argparse.ArgumentParser(description="Pump TMC2209 UART Diagnostic Tool")
-    parser.add_argument("--real", action="store_true", help="Attempt to run real UART hardware connection.")
     parser.add_argument("--port", type=str, default="/dev/ttyAMA0", help="Serial port to use (e.g. /dev/ttyAMA0)")
     args = parser.parse_args()
 
@@ -108,29 +73,18 @@ def main():
     print("for motor connection status, load (stalls), and config.")
     print("==========================================================\n")
 
-    if args.real:
-        if not TMC_AVAILABLE:
-            print("⚠️ ERROR: The 'TMC2209' python library is not installed.")
-            print("To run the REAL test, install it using the AMiGA virtual environment:")
-            print("   /home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/pip install TMC2209")
-            sys.exit(1)
-            
-        print("Running REAL Hardware UART Tests...")
-        # Assume addresses 0 and 1 for food and water pumps for this test
-        address_map = {"food": 0, "water": 1} 
-        for pump_name in PUMP_PINS.keys():
-            addr = address_map.get(pump_name, 0)
-            run_real_uart_diagnostic(pump_name, args.port, addr)
-    else:
-        print("Running in DEMO/INFORMATIONAL mode (Since the drivers aren't wired yet!)")
-        print("Run with: `python3 pump_diagnostic.py --real` to test actual hardware.\n")
+    if not TMC_AVAILABLE:
+        print("⚠️ ERROR: The 'TMC2209' python library is not installed.")
+        print("To run the test, install it using the AMiGA virtual environment:")
+        print("   /home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/pip install TMC2209")
+        sys.exit(1)
         
-        for pump_name in PUMP_PINS.keys():
-            print_mock_uart_diagnostic(pump_name)
-            time.sleep(0.5)
-            
-        print("\nWhen you are ready to use this for real, just plug the UART wire in")
-        print("and run `/home/siyyo/Documents/arcs_foodi/AMiGA/.venv/bin/pip install TMC2209`!")
+    print("Running Hardware UART Tests...")
+    # Assume addresses 0 and 1 for food and water pumps for this test
+    address_map = {"food": 0, "water": 1} 
+    for pump_name in PUMP_PINS.keys():
+        addr = address_map.get(pump_name, 0)
+        run_real_uart_diagnostic(pump_name, args.port, addr)
 
 if __name__ == "__main__":
     main()

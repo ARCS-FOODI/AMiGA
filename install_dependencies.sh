@@ -19,8 +19,14 @@ echo "[1/2] Setting up Python backend environment..."
 cd "$TARGET_DIR"
 
 if [ ! -d ".venv" ]; then
+    echo "Checking if python3-venv is installed..."
+    if ! dpkg -l | grep -q python3-venv; then
+        echo "Installing python3-venv (may require sudo password)..."
+        sudo apt-get update && sudo apt-get install -y python3-venv || echo "⚠️ Warning: Failed to install python3-venv. Venv creation might fail."
+    fi
+
     echo "Creating virtual environment in .venv..."
-    python3 -m venv .venv
+    python3 -m venv .venv || { echo "❌ Failed to create virtual environment! Please install python3-venv manually."; exit 1; }
 else
     echo "Virtual environment .venv already exists."
 fi

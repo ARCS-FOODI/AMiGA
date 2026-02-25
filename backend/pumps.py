@@ -52,7 +52,8 @@ class StepperPump:
         self._handle = handle
         lgpio.gpio_claim_output(self._handle, self.pins["STEP"], 0)
         lgpio.gpio_claim_output(self._handle, self.pins["DIR"], 0)
-        lgpio.gpio_claim_output(self._handle, self.pins["EN"], 1)
+        if "EN" in self.pins:
+            lgpio.gpio_claim_output(self._handle, self.pins["EN"], 1)
 
     def _set_direction(self, dir_name: str) -> None:
         """Internal helper to set the DIR pin."""
@@ -69,7 +70,7 @@ class StepperPump:
 
     def _enable_driver(self, enable: bool) -> None:
         """Internal helper to set the EN pin (Active LOW)."""
-        if not self._handle:
+        if not self._handle or "EN" not in self.pins:
             return
         lgpio.gpio_write(self._handle, self.pins["EN"], 0 if enable else 1)
 

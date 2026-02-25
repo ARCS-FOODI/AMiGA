@@ -5,7 +5,6 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
     "food": {      # pump for food solution
         "STEP": 13,  
         "DIR": 15,   
-        "EN": 11,   
     },
     "water": {  # pump for water
         "STEP": 18,

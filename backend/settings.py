@@ -3,13 +3,13 @@ from typing import Dict
 # Pump pin maps (BCM numbering)
 PUMP_PINS: Dict[str, Dict[str, int]] = {
     "food": {      # pump for food solution
-        "STEP": 13,  
-        "DIR": 15,   
+        "STEP": 27,  
+        "DIR": 22,   
     },
     "water": {  # pump for water
-        "STEP": 36,
-        "DIR": 37,
-        "EN": 32,
+        "STEP": 16,
+        "DIR": 26,
+        "EN": 12,
     },
 }
 

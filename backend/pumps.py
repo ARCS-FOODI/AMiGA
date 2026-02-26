@@ -238,7 +238,7 @@ class PumpManager:
         self._handle = None
         self.pumps: Dict[str, StepperPump] = {}
         
-        self.bcm_global_en = get_bcm_pin(GLOBAL_PUMP_EN, "GLOBAL_PUMP_EN")
+        self.bcm_global_en = GLOBAL_PUMP_EN
         self._active_pumps_count = 0
         self._manager_lock = threading.Lock()
         

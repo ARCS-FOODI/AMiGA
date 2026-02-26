@@ -242,3 +242,4 @@ config/amiga-gcp-key.json
 *.jpg
 kratky/sinfo
 kratky/sensor_log.csv
+data/master.csv

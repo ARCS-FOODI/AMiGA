@@ -22,6 +22,11 @@ async def lifespan(app: FastAPI):
     hs_sensors.manager.startup(use_digital=True)
     grow_scheduler.start()
     
+    print("\n" + "="*50)
+    print("  AMiGA API backend is running.")
+    print("  Interactive API Docs: http://localhost:8000/docs#/")
+    print("="*50 + "\n")
+    
     try:
         yield
     finally:

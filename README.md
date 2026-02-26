@@ -115,7 +115,7 @@ The automated setup script (`.sh`) uses `apt-get` and is tailored for Debian-bas
 
 If you are developing on a PC/Mac without Raspberry Pi hardware, you can run the system in simulation mode. This mocks the GPIO and sensor readings.
 
-- **Windows**: `start_simulate.bat`
+- **Windows**: `.\start_simulate.bat`
 - **Linux / macOS**: `./start_simulate.sh`
 
 These scripts will start both the FastAPI backend (on port 8000) and the Vite frontend (on port 5173).

@@ -87,7 +87,7 @@ AMiGA provides automated setup scripts to configure the Python virtual environme
 Run the provided batch script to set up both the backend and frontend:
 
 ```cmd
-install_dependencies.bat
+.\install_dependencies.bat
 ```
 
 ### Linux (Debian/Ubuntu) & Raspberry Pi OS

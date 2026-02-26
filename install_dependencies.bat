@@ -40,7 +40,7 @@ if not exist ".venv\" (
 echo Activating virtual environment and installing requirements...
 call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip
-pip install -r backend\requirements.txt
+pip install -r requirements.txt
 if !errorlevel! neq 0 (
     echo [WARNING] Some backend dependencies failed to install.
     echo This is normal for Raspberry Pi specific hardware libraries on Windows.

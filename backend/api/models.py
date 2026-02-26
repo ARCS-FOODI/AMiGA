@@ -44,7 +44,7 @@ class PumpCalibrationUpdate(BaseModel):
 
 class SensorsRequest(BaseModel):
     addr: int = DEFAULT_ADDR
-    gain: int = DEFAULT_GAIN
+    gain: float = DEFAULT_GAIN
     samples: int = Field(1, ge=1, le=DEFAULT_SAMPLES)
     interval: float = Field(DEFAULT_INTSEC, ge=0.0)
     avg: int = Field(DEFAULT_AVG, ge=1)
@@ -60,7 +60,7 @@ class ControlCycleRequest(BaseModel):
     irrigate_seconds: float = Field(DEFAULT_IRR_SEC)
     direction: str = Field(DEFAULT_DIR)
     addr: int = DEFAULT_ADDR
-    gain: int = DEFAULT_GAIN
+    gain: float = DEFAULT_GAIN
     avg: int = DEFAULT_AVG
 
 class LightStateRequest(BaseModel):

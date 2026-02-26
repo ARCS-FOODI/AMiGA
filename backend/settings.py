@@ -21,14 +21,14 @@ CHIP = 0  # usually /dev/gpiochip0
 LIGHT_PIN = 23
 # Sensor defaults
 DEFAULT_ADDR   = 0x48
-DEFAULT_GAIN   = 1          # ±4.096 V
+DEFAULT_GAIN   = 2/3        # ±6.144 V (Required to safely read 5V signals)
 DEFAULT_AVG    = 5
 DEFAULT_INTSEC = 1.0
 DEFAULT_SAMPLES= 30
-DEFAULT_DRY_V  = 3.28
+DEFAULT_DRY_V  = 5.00
 DEFAULT_WET_V  = 0.00
 # Now interpreted as a **voltage** threshold in volts
-DEFAULT_THRESH = 2.00       # V threshold for irrigation logic
+DEFAULT_THRESH = 3.00       # V threshold for irrigation logic with 5V sensors
 DEFAULT_DO_PIN = 6          # optional digital wet/dry
 
 # Motor defaults

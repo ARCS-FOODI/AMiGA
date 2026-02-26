@@ -60,7 +60,7 @@ class SensorArray:
     def __init__(
         self, 
         addr: int = DEFAULT_ADDR, 
-        gain: int = DEFAULT_GAIN, 
+        gain: float = DEFAULT_GAIN, 
         do_pin: int = DEFAULT_DO_PIN,
         chip: int = CHIP
     ):
@@ -196,7 +196,7 @@ def _ensure_manager(use_digital: bool = False):
 
 def snapshot_sensors(
     addr: int = DEFAULT_ADDR,
-    gain: int = DEFAULT_GAIN,
+    gain: float = DEFAULT_GAIN,
     samples: int = 1,
     interval: float = DEFAULT_INTSEC,
     avg: int = DEFAULT_AVG,

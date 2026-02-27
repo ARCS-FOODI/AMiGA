@@ -38,7 +38,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ textTransform: 'capitalize' }}>💧 {pumpName} Reservoir</h3>
+                <h3 style={{ textTransform: 'capitalize' }}>💧 {pumpName} isaac is awesome!</h3>
                 <span className={`status-indicator ${running ? 'status-online' : 'status-neutral'}`} style={{ backgroundColor: running ? colorBase : '' }}></span>
             </div>
 

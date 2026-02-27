@@ -86,16 +86,18 @@ class RS485:
         self.ser.reset_input_buffer()
 
         self._tx(req)
-        # print("TX:", req.hex())
+        print("TX:", req.hex())
 
         head = self.ser.read(3)
-        # print("HEAD:", head.hex(), "len=", len(head))
+        print("HEAD:", head.hex(), "len=", len(head))
         if len(head) < 3:
+            print("Error: Received less than 3 bytes in response head.")
             return None
 
         a, func, nbytes = head
         if func == 0x83:
             _ = self.ser.read(3)
+            print("Error: Received Modbus exception code 0x83.")
             return None
 
         rest = self.ser.read(nbytes + 2)
@@ -104,6 +106,7 @@ class RS485:
         calc = crc16_modbus(reply[:-2])
         recv = reply[-2] | (reply[-1] << 8)
         if calc != recv or nbytes % 2:
+            print(f"Error: CRC mismatch or invalid nbytes. Calc: {hex(calc)}, Recv: {hex(recv)}")
             return None
 
         data = reply[3:3+nbytes]

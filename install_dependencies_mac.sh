@@ -48,7 +48,14 @@ fi
 echo "Activating virtual environment and installing requirements..."
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt || echo "⚠️  Warning: Some backend dependencies failed to install. Continuing anyway..."
+echo "Installing backend dependencies one by one to allow skipping unrecognized packages..."
+while IFS= read -r req || [[ -n "$req" ]]; do
+    # Remove carriage returns, comments, and extra spaces
+    req=$(echo "$req" | tr -d '\r' | sed 's/#.*//' | xargs)
+    if [ -n "$req" ]; then
+        pip install "$req" || echo "⚠️  Warning: Failed to install $req. Skipping..."
+    fi
+done < requirements.txt
 echo "✅ Backend dependency step complete."
 
 # 2. Setup Frontend

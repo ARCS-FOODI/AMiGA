@@ -54,8 +54,12 @@ exit /b 1
 :InstallBackend
 echo Installing backend requirements...
 .venv\Scripts\python.exe -m pip install --upgrade pip
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-if %errorlevel% neq 0 goto FailBackend
+echo Installing backend requirements one by one to allow skipping unrecognized packages...
+for /f "usebackq eol=# tokens=* delims=" %%a in ("requirements.txt") do (
+    set "req=%%a"
+    echo Installing: !req!
+    .venv\Scripts\python.exe -m pip install "!req!" || echo [WARNING] Failed to install !req!. Skipping...
+)
 echo [SUCCESS] Backend dependency step complete.
 echo.
 goto SetupFrontend

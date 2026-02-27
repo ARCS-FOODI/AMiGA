@@ -14,7 +14,7 @@ click==8.3.1
 fastapi==0.133.0
 h11==0.16.0
 idna==3.11
-lgpio==0.2.2.0; platform_system != "Windows"
+lgpio==0.2.2.0; platform_system == "Linux"
 pydantic==2.12.5
 pydantic_core==2.41.5
 pyftdi==0.57.1

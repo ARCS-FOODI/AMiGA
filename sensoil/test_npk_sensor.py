@@ -1,42 +1,31 @@
+import minimalmodbus
 import serial
-import time
 
-# Common ports: '/dev/ttyUSB0' on Pi, 'COM3' on Windows
-PORT = '/dev/ttyUSB0' 
+# Configure the sensor
+sensor = minimalmodbus.Instrument('/dev/ttyUSB1', 1) # Port and Slave Address (1)
+sensor.serial.baudrate = 9600
+sensor.serial.bytesize = 8
+sensor.serial.parity = serial.PARITY_NONE
+sensor.serial.stopbits = 1
+sensor.serial.timeout = 1
+sensor.mode = minimalmodbus.MODE_RTU
 
-# Standard baud rates to test
-BAUD_RATES = [4800, 9600, 14400, 19200, 38400, 115200]
-
-# Modbus RTU Query: Read Device ID (Register 0x0000)
-# This is a common "Hello" command for these NPK sensors
-# Format: [Address, Function, Reg_High, Reg_Low, Data_High, Data_Low, CRC_Low, CRC_High]
-QUERY = b'\x01\x03\x00\x00\x00\x01\x84\x0A' 
-
-def scan_sensor():
-    print(f"Starting scan on {PORT}...")
-    
-    for baud in BAUD_RATES:
-        print(f"Testing {baud} bps...", end=" ", flush=True)
-        try:
-            with serial.Serial(PORT, baud, timeout=1, parity=serial.PARITY_NONE, stopbits=1, bytesize=8) as ser:
-                ser.flushInput()
-                ser.write(QUERY)
-                time.sleep(0.2)
-                
-                response = ser.read(ser.in_waiting)
-                
-                if response:
-                    print(f"\n[!] SUCCESS: Found sensor at {baud} bps!")
-                    print(f"Raw Response: {response.hex().upper()}")
-                    return baud
-                else:
-                    print("No response.")
-                    
-        except Exception as e:
-            print(f"Error: {e}")
-            
-    print("\nScan complete. No sensor detected. Check wiring (A/B) and power (12V-24V).")
-    return None
+def read_npk():
+    try:
+        # Read 3 registers starting at 0x001E (30 decimal)
+        # functioncode 3 is for 'Read Holding Registers'
+        data = sensor.read_registers(30, 3, functioncode=3)
+        
+        n_val = data[0]
+        p_val = data[1]
+        k_val = data[2]
+        
+        print(f"Nitrogen (N): {n_val} mg/kg")
+        print(f"Phosphorus (P): {p_val} mg/kg")
+        print(f"Potassium (K): {k_val} mg/kg")
+        
+    except Exception as e:
+        print(f"Failed to read sensor: {e}")
 
 if __name__ == "__main__":
-    scan_sensor()
+    read_npk()

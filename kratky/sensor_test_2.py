@@ -8,8 +8,7 @@ import minimalmodbus
 from datetime import datetime  # Added for timestamp
 
 # Specific Path and Filename
-ENV_DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo_env.txt"
-WATER_DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo_water.txt"
+DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo"
 LOG_FILE = "/home/foodi/Documents/AMiGA/kratky/sensor_log.csv" # New Log File
 
 def init_sensors():
@@ -44,8 +43,7 @@ def init_sensors():
     return tsl, scd4x, soil_sensor
 
 def main():
-    os.makedirs(os.path.dirname(ENV_DATA_FILE), exist_ok=True)
-    os.makedirs(os.path.dirname(WATER_DATA_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     tsl, scd4x, soil_sensor = init_sensors()
 
     # Define variables OUTSIDE the loop so they persist (prevents "N/A" flickering)
@@ -108,17 +106,14 @@ def main():
                     print(f"Modbus Read Error: {e}")
                 last_soil_read = current_time
 
-            # 4. Write to OBS Files (sinfo_env and sinfo_water)
-            env_output = (
+            # 4. Write to OBS File (sinfo)
+            output = (
                 f"=== ENVIRONMENT ===\n"
                 f"Air Temp: {temp_f} °F\n"
                 f"Hum: {hum_val} %\n"
                 f"CO2: {co2_val} ppm\n"
-                f"Lux: {lux_val} lx"
-            )
-            
-            water_output = (
-                f"=== WATER ===\n"
+                f"Lux: {lux_val} lx\n"
+                f"\n=== WATER ===\n"
                 f"Water Temp: {soil_temp} °C\n"
                 f"pH: {soil_ph}\n"
                 f"EC: {soil_ec} us/cm\n"
@@ -126,13 +121,9 @@ def main():
                 f"Moist: {soil_moist} %"
             )
 
-            with open(ENV_DATA_FILE + ".tmp", "w") as f:
-                f.write(env_output)
-            os.replace(ENV_DATA_FILE + ".tmp", ENV_DATA_FILE)
-
-            with open(WATER_DATA_FILE + ".tmp", "w") as f:
-                f.write(water_output)
-            os.replace(WATER_DATA_FILE + ".tmp", WATER_DATA_FILE)
+            with open(DATA_FILE + ".tmp", "w") as f:
+                f.write(output)
+            os.replace(DATA_FILE + ".tmp", DATA_FILE)
 
             # 5. Append to CSV Log (Records every second)
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

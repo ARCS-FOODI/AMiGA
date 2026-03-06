@@ -1,16 +1,10 @@
 obs = obslua
 
--- Environment source
-env_source_name = "Environment Display"
-env_file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo_env.txt"
-
--- Water source
-water_source_name = "Water Display"
-water_file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo_water.txt"
-
+source_name = "Sensor Display"
+file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo"
 interval = 2000 
 
-function update_obs_text_source(source_name, file_path)
+function update_obs_text()
     local f = io.open(file_path, "r")
     if not f then return end
     local content = f:read("*all")
@@ -24,11 +18,6 @@ function update_obs_text_source(source_name, file_path)
         obs.obs_data_release(settings)
         obs.obs_source_release(source)
     end
-end
-
-function update_obs_text()
-    update_obs_text_source(env_source_name, env_file_path)
-    update_obs_text_source(water_source_name, water_file_path)
 end
 
 function script_load(settings)

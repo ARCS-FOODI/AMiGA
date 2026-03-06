@@ -108,14 +108,17 @@ def main():
 
             # 4. Write to OBS File (sinfo)
             output = (
+                f"=== ENVIRONMENT ===\n"
                 f"Air Temp: {temp_f} °F\n"
                 f"Hum: {hum_val} %\n"
                 f"CO2: {co2_val} ppm\n"
                 f"Lux: {lux_val} lx\n"
+                f"\n=== WATER ===\n"
+                f"Water Temp: {soil_temp} °C\n"
                 f"pH: {soil_ph}\n"
                 f"EC: {soil_ec} us/cm\n"
-                f"NPK: {soil_n}-{soil_p}-{soil_k} mg/kg"
-                # Removed soil temp/moist from overlay since its probably redundant or Kratky is liquid, but adjust if needed
+                f"NPK: {soil_n}-{soil_p}-{soil_k} mg/kg\n"
+                f"Moist: {soil_moist} %"
             )
 
             with open(DATA_FILE + ".tmp", "w") as f:

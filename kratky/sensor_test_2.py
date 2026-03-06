@@ -86,14 +86,22 @@ def main():
             current_time = time.time()
             if soil_sensor and (current_time - last_soil_read) >= 5:
                 try:
-                    values = soil_sensor.read_registers(30, 7)
-                    soil_moist = f"{values[0] / 10.0}"
-                    soil_temp  = f"{values[1] / 10.0}"
-                    soil_ec    = f"{values[2]}"
-                    soil_ph    = f"{values[3] / 10.0}"
-                    soil_n     = f"{values[4]}"
-                    soil_p     = f"{values[5]}"
-                    soil_k     = f"{values[6]}"
+                    ph = soil_sensor.read_register(6, functioncode=3) / 100.0
+                    moisture = soil_sensor.read_register(18, functioncode=3) / 10.0
+                    temperature = soil_sensor.read_register(19, functioncode=3, signed=True) / 10.0
+                    ec = soil_sensor.read_register(21, functioncode=3)
+                    
+                    nitrogen = soil_sensor.read_register(30, functioncode=3)
+                    phosphorus = soil_sensor.read_register(31, functioncode=3)
+                    potassium = soil_sensor.read_register(32, functioncode=3)
+
+                    soil_ph = f"{ph:.2f}"
+                    soil_moist = f"{moisture:.1f}"
+                    soil_temp = f"{temperature:.1f}"
+                    soil_ec = f"{ec}"
+                    soil_n = f"{nitrogen}"
+                    soil_p = f"{phosphorus}"
+                    soil_k = f"{potassium}"
                 except Exception as e:
                     print(f"Modbus Read Error: {e}")
                 last_soil_read = current_time

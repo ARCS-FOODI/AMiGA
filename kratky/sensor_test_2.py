@@ -110,7 +110,7 @@ def main():
 
             # 4. Write to OBS Files (sinfo_env and sinfo_water)
             env_output = (
-                f"=== ENVIRONMENT ===\n"
+                f"=== AREA ===\n"
                 f"Air Temp: {temp_f} °F\n"
                 f"Hum: {hum_val} %\n"
                 f"CO2: {co2_val} ppm\n"

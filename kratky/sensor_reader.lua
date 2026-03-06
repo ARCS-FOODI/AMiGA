@@ -2,11 +2,11 @@ obs = obslua
 
 -- Environment source
 env_source_name = "Environment Display"
-env_file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo_env"
+env_file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo_env.txt"
 
 -- Water source
 water_source_name = "Water Display"
-water_file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo_water"
+water_file_path = "/home/foodi/Documents/AMiGA/kratky/sinfo_water.txt"
 
 interval = 2000 
 

@@ -8,8 +8,8 @@ import minimalmodbus
 from datetime import datetime  # Added for timestamp
 
 # Specific Path and Filename
-ENV_DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo_env"
-WATER_DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo_water"
+ENV_DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo_env.txt"
+WATER_DATA_FILE = "/home/foodi/Documents/AMiGA/kratky/sinfo_water.txt"
 LOG_FILE = "/home/foodi/Documents/AMiGA/kratky/sensor_log.csv" # New Log File
 
 def init_sensors():

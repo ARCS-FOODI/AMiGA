@@ -4,8 +4,6 @@ import time
 # Configuration
 PORT = '/dev/ttyUSB0'  # The port that worked in mbpoll
 SLAVE_ID = 1           # Your sensor's address
-START_REG = 30         # The starting register that worked
-
 # Initialize the sensor
 # minimalmodbus handles the 9600-8N1 settings by default
 instrument = minimalmodbus.Instrument(PORT, SLAVE_ID)
@@ -14,19 +12,25 @@ instrument.serial.timeout = 1
 
 def read_soil_data():
     try:
-        # Read 7 registers starting at 30
-        # Function code 03 (Read Holding Registers) is used by default
-        values = instrument.read_registers(START_REG, 7)
+        # Read individual registers using function code 3 (0x03)
+        ph = instrument.read_register(6, functioncode=3) / 100.0
+        moisture = instrument.read_register(18, functioncode=3) / 10.0
+        temperature = instrument.read_register(19, functioncode=3, signed=True) / 10.0
+        ec = instrument.read_register(21, functioncode=3)
+        
+        nitrogen = instrument.read_register(30, functioncode=3)
+        phosphorus = instrument.read_register(31, functioncode=3)
+        potassium = instrument.read_register(32, functioncode=3)
 
         print("-" * 30)
-        print(f"Soil Data @ {time.strftime('%H:%M:%S')}")
-        print(f"Moisture:    {values[0] / 10.0}%")
-        print(f"Temperature: {values[1] / 10.0}°C")
-        print(f"EC:          {values[2]} us/cm")
-        print(f"pH:          {values[3] / 10.0}")
-        print(f"Nitrogen:    {values[4]} mg/kg")
-        print(f"Phosphorus:  {values[5]} mg/kg")
-        print(f"Potassium:   {values[6]} mg/kg")
+        print(f"Soil Data @ {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"pH:          {ph:.2f}")
+        print(f"Moisture:    {moisture:.1f}%")
+        print(f"Temperature: {temperature:.1f}°C")
+        print(f"EC:          {ec} us/cm")
+        print(f"Nitrogen:    {nitrogen} mg/kg")
+        print(f"Phosphorus:  {phosphorus} mg/kg")
+        print(f"Potassium:   {potassium} mg/kg")
         
     except Exception as e:
         print(f"Failed to read sensor: {e}")

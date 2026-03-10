@@ -43,3 +43,27 @@ DEFAULT_IRR_SEC     = 5.0   # seconds to run pump when triggered
 import os
 # Set to True to explicitely mock Raspberry Pi GPIO hardware (For Mac/Windows UI dev)
 SIMULATE = True if os.environ.get("AMIGA_SIMULATE", "0") == "1" else False
+<<<<<<< HEAD
+=======
+
+# NPK 7-in-1 Soil Sensor Configuration
+NPK_PORT = os.getenv('NPK_PORT', '/dev/ttyUSB0')
+NPK_SLAVE_ID = int(os.getenv('NPK_SLAVE_ID', '1'))
+NPK_BAUDRATE = int(os.getenv('NPK_BAUDRATE', '9600'))
+NPK_TIMEOUT = float(os.getenv('NPK_TIMEOUT', '1.0'))
+NPK_POLL_INTERVAL = int(os.getenv('NPK_POLL_INTERVAL', '15'))  # seconds
+
+# NPK Sensor Health Thresholds (for UI visual indicators)
+NPK_THRESHOLDS = {
+    'ph_min': 5.5,
+    'ph_max': 8.5,
+    'moisture_min': 20,
+    'moisture_max': 80,
+    'temp_min': 15,
+    'temp_max': 30,
+    'ec_max': 2000,
+    'nitrogen_min': 10,
+    'phosphorus_min': 5,
+    'potassium_min': 100,
+}
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)

@@ -1,5 +1,9 @@
 // Centralized API fetching logic
+<<<<<<< HEAD
 const API_BASE = "http://localhost:8000";
+=======
+const API_BASE = "http://localhost:8888";
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
 
 const handleResponse = async (res) => {
     if (!res.ok) {
@@ -57,5 +61,17 @@ export const runControlCycle = (data) =>
         body: JSON.stringify(data)
     }).then(handleResponse);
 
+<<<<<<< HEAD
 export const getScaleWeight = () => fetch(`${API_BASE}/scale/read`).then(handleResponse);
 export const tareScale = () => fetch(`${API_BASE}/scale/tare`, { method: "POST" }).then(handleResponse);
+=======
+export const snapshotNPKSensors = (port = '/dev/ttyUSB0', slaveId = 1) =>
+    fetch(`${API_BASE}/npk-sensors/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ port, slave_id: slaveId })
+    }).then(handleResponse);
+
+export const getNPKSensorStatus = () =>
+    fetch(`${API_BASE}/npk-sensors/status`).then(handleResponse);
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)

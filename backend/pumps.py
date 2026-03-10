@@ -6,7 +6,11 @@ import threading
 from typing import Dict, Any, List
 
 from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE, GLOBAL_PUMP_EN
+<<<<<<< HEAD
 from . import config_store, master_log, scale
+=======
+from . import config_store, master_log
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
 
 if not SIMULATE:
     import lgpio
@@ -165,12 +169,15 @@ class StepperPump:
             "rate_ml_per_sec": self.calibration_rate,
         })
         
+<<<<<<< HEAD
         # NOTE: Pass dispensed liquid over to the simulated scale (assuming 1ml = 1g)
         try:
             scale.manager.add_water_g(ml)
         except Exception as e:
             print(f"[SCALE] Failed to add water weight: {e}")
         
+=======
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
         try:
             master_log.log_event(
                 "pump_run_ml",

@@ -73,3 +73,23 @@ class LightConfig(BaseModel):
     mode: Literal["manual", "daynight"] = "manual"
     day_start: str = "19:00"
     day_end: str = "07:00"
+<<<<<<< HEAD
+=======
+
+class NPKSensorsRequest(BaseModel):
+    port: str = "/dev/ttyUSB0"
+    slave_id: int = Field(1, ge=1, le=247)
+    timeout: float = Field(1.0, gt=0)
+
+class NPKSensorReading(BaseModel):
+    timestamp: str
+    ph: float = None
+    moisture: float = None
+    temperature: float = None
+    ec: int = None
+    nitrogen: int = None
+    phosphorus: int = None
+    potassium: int = None
+    status: str
+    error: str = None
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)

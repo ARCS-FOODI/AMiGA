@@ -3,10 +3,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+<<<<<<< HEAD
 from .routers import pumps, sensors, light, control, scale
 from .. import pumps as hs_pumps
 from .. import sensors as hs_sensors
 from .. import light as hs_light
+=======
+from .routers import pumps, sensors, light, control, npk_sensors
+from .. import pumps as hs_pumps
+from .. import sensors as hs_sensors
+from .. import light as hs_light
+from .. import npk_sensor
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
 from .. import grow_scheduler
 from .. import config_store
 from ..settings import PUMP_PINS, DEFAULT_ADDR, DEFAULT_GAIN, DEFAULT_AVG, DEFAULT_THRESH, DEFAULT_HZ, DEFAULT_DIR, DEFAULT_VOTE_K, DEFAULT_IRR_SEC
@@ -20,6 +28,22 @@ async def lifespan(app: FastAPI):
     hs_pumps.manager.startup()
     hs_light.manager.startup()
     hs_sensors.manager.startup(use_digital=True)
+<<<<<<< HEAD
+=======
+    
+    # Initialize NPK sensor with default settings
+    try:
+        from ..settings import NPK_PORT, NPK_SLAVE_ID, NPK_BAUDRATE, NPK_TIMEOUT
+        npk_sensor.manager.initialize(
+            port=NPK_PORT,
+            slave_id=NPK_SLAVE_ID,
+            baudrate=NPK_BAUDRATE,
+            timeout=NPK_TIMEOUT
+        )
+    except Exception as e:
+        print(f"Warning: Could not initialize NPK sensor: {e}")
+    
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
     grow_scheduler.start()
     
     print("\n" + "="*50)
@@ -34,6 +58,10 @@ async def lifespan(app: FastAPI):
         hs_pumps.manager.shutdown()
         hs_light.manager.shutdown()
         hs_sensors.manager.shutdown()
+<<<<<<< HEAD
+=======
+        npk_sensor.manager.shutdown()
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
 
 
 app = FastAPI(title="AMiGA API", lifespan=lifespan)
@@ -50,9 +78,15 @@ app.add_middleware(
 # Register all Modular Routers
 app.include_router(pumps.router)
 app.include_router(sensors.router)
+<<<<<<< HEAD
 app.include_router(light.router)
 app.include_router(control.router)
 app.include_router(scale.router)
+=======
+app.include_router(npk_sensors.router)
+app.include_router(light.router)
+app.include_router(control.router)
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
 
 
 @app.get("/config", tags=["system"])

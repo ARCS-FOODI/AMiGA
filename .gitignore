@@ -243,4 +243,7 @@ config/amiga-gcp-key.json
 kratky/sinfo
 kratky/sensor_log.csv
 data/master.csv
+<<<<<<< HEAD
 backend/data/scale_state.json
+=======
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)

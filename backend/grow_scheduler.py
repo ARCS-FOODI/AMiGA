@@ -100,12 +100,16 @@ def _set_state(state: Dict[str, Any]) -> None:
 def _ensure_daynight_enabled() -> None:
     """
     Force light config into daynight mode with our schedule.
+<<<<<<< HEAD
     This only runs ONCE per cycle start, so the user can still manually switch back to 'manual' mode.
     """
     state = _get_state()
     if state.get("daynight_started", False):
         return  # Already triggered
 
+=======
+    """
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
     cfg = light.manager.main_light.get_config()
     if cfg.get("mode") != "daynight":
         # IMPORTANT: light.set_light_config(mode, day_start, day_end)
@@ -115,9 +119,12 @@ def _ensure_daynight_enabled() -> None:
             source="grow_scheduler._ensure_daynight_enabled",
             note=f"start={LIGHT_ON_START} end={LIGHT_ON_END}",
         )
+<<<<<<< HEAD
     
     state["daynight_started"] = True
     _set_state(state)
+=======
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)
 
 
 def _apply_daynight_now() -> None:

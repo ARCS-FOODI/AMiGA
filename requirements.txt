@@ -27,3 +27,7 @@ typing_extensions==4.15.0
 uvicorn==0.41.0
 TMC2209_PY==0.1.4
 tzdata; sys_platform == "win32"
+<<<<<<< HEAD
+=======
+minimalmodbus==2.1.1
+>>>>>>> 200cc1a (feat: implement 7-in-1 NPK soil sensor UI with boxed layout and equal-sized components)

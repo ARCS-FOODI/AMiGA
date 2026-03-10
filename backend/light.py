@@ -50,11 +50,11 @@ class GrowLight:
     def _level_for_state(self, on: bool) -> int:
         """
         Map logical light state to the actual GPIO level.
-        Relay is wired ACTIVE-LOW:
-          - GPIO LOW (0)  -> light ON
-          - GPIO HIGH (1) -> light OFF
+        Relay is now wired to Normally Closed (NC):
+          - GPIO HIGH (1) -> relay energized -> NC opens -> no short -> light ON
+          - GPIO LOW (0)  -> relay de-energized -> NC closes -> shorts module -> light OFF
         """
-        return 0 if on else 1
+        return 1 if on else 0
 
     def set_state(self, on: bool, log_source: str = "GrowLight.set_state") -> Dict[str, Any]:
         """Turn the light ON or OFF by driving the relay pin."""

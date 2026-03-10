@@ -67,14 +67,24 @@ export default function LightControl() {
                     <label style={{ fontSize: '0.85rem' }}>Mode</label>
                     <select
                         value={config.mode}
-                        onChange={(e) => setConfig({ ...config, mode: e.target.value })}
+                        onChange={async (e) => {
+                            const newMode = e.target.value;
+                            // Optimistic UI update
+                            setConfig({ ...config, mode: newMode });
+                            // Save immediately to backend so polling doesn't overwrite it
+                            await setLightConfig({
+                                mode: newMode,
+                                day_start: config.day_start,
+                                day_end: config.day_end
+                            });
+                        }}
                         style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid var(--glass-border)', borderRadius: '4px' }}
                     >
                         <option value="manual">Manual Only</option>
                         <option value="daynight">Day/Night Automation</option>
                     </select>
 
-                    <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', opacity: config.mode === 'manual' ? 0.3 : 1, pointerEvents: config.mode === 'manual' ? 'none' : 'auto' }}>
                         <div style={{ flex: 1 }}>
                             <label style={{ fontSize: '0.85rem' }}>Turn ON</label>
                             <input type="time" value={config.day_start.substring(0, 5)} onChange={(e) => setConfig({ ...config, day_start: e.target.value + ':00' })} style={{ width: '100%' }} />
@@ -85,7 +95,12 @@ export default function LightControl() {
                         </div>
                     </div>
 
-                    <button onClick={handleConfigSave} style={{ marginTop: '0.5rem' }}>Save Schedule</button>
+                    <button
+                        onClick={handleConfigSave}
+                        style={{ marginTop: '0.5rem', opacity: config.mode === 'manual' ? 0.3 : 1, pointerEvents: config.mode === 'manual' ? 'none' : 'auto' }}
+                    >
+                        Save Schedule Time
+                    </button>
                 </div>
             </div>
         </div>

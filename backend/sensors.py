@@ -14,11 +14,11 @@ from .settings import (
     DEFAULT_INTSEC,
     DEFAULT_DO_PIN,
     CHIP,
-    SIMULATE,
+    SIMULATE_GPIO,
 )
 from . import master_log
 
-if not SIMULATE:
+if not SIMULATE_GPIO:
     import board
     import busio
     import adafruit_ads1x15.ads1115 as ADS

@@ -1,6 +1,6 @@
 # Hardware Integration Documentation
 
-This document serves as the central record for AMiGA's physical hardware integration, wiring configurations, and module interactions. Keeping this up to date is required for anyone performing dev work on software modules that interface with these components.
+This document serves as a record for AMiGA's physical hardware integration, wiring configurations, and module interactions. Keeping this up to date is required for anyone performing dev work on software modules that interface with these components.
 
 ## Lighting System
 

@@ -42,4 +42,8 @@ DEFAULT_IRR_SEC     = 5.0   # seconds to run pump when triggered
 
 import os
 # Set to True to explicitely mock Raspberry Pi GPIO hardware (For Mac/Windows UI dev)
-SIMULATE = True if os.environ.get("AMIGA_SIMULATE", "0") == "1" else False
+SIMULATE_GPIO  = True if os.environ.get("AMIGA_SIMULATE_GPIO",  os.environ.get("AMIGA_SIMULATE", "0")) == "1" else False
+SIMULATE_SCALE = True if os.environ.get("AMIGA_SIMULATE_SCALE", os.environ.get("AMIGA_SIMULATE", "0")) == "1" else False
+
+# Legacy support for modules that still check 'SIMULATE'
+SIMULATE = SIMULATE_GPIO and SIMULATE_SCALE

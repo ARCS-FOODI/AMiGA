@@ -3,11 +3,18 @@ import { getLightConfig, toggleLight, setLightConfig } from '../api';
 
 export default function LightControl() {
     const [config, setConfig] = useState(null);
+    const [editConfig, setEditConfig] = useState({ mode: 'manual', day_start: '19:00:00', day_end: '07:00:00' });
     const [loading, setLoading] = useState(true);
 
     const refreshLight = () => {
         getLightConfig()
-            .then(setConfig)
+            .then(data => {
+                setConfig(data);
+                // Only initialize editConfig if it's the very first load
+                if (loading) {
+                    setEditConfig({ mode: data.mode, day_start: data.day_start, day_end: data.day_end });
+                }
+            })
             .finally(() => setLoading(false));
     };
 
@@ -15,7 +22,7 @@ export default function LightControl() {
         refreshLight();
         const interval = setInterval(refreshLight, 5000); // polling for external schedule flips
         return () => clearInterval(interval);
-    }, []);
+    }, [loading]);
 
     const handleToggle = async () => {
         await toggleLight();
@@ -24,11 +31,11 @@ export default function LightControl() {
 
     const handleConfigSave = async () => {
         await setLightConfig({
-            mode: config.mode,
-            day_start: config.day_start,
-            day_end: config.day_end
+            mode: editConfig.mode,
+            day_start: editConfig.day_start,
+            day_end: editConfig.day_end
         });
-        alert('Light Schedule Saved!');
+        alert('Light Configuration Saved!');
         refreshLight();
     };
 
@@ -63,44 +70,41 @@ export default function LightControl() {
                 <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '0.5rem 0' }} />
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <h4>Schedule Settings</h4>
+                    <h4>Configuration</h4>
                     <label style={{ fontSize: '0.85rem' }}>Mode</label>
                     <select
-                        value={config.mode}
-                        onChange={async (e) => {
-                            const newMode = e.target.value;
-                            // Optimistic UI update
-                            setConfig({ ...config, mode: newMode });
-                            // Save immediately to backend so polling doesn't overwrite it
-                            await setLightConfig({
-                                mode: newMode,
-                                day_start: config.day_start,
-                                day_end: config.day_end
-                            });
-                        }}
+                        value={editConfig.mode}
+                        onChange={(e) => setEditConfig({ ...editConfig, mode: e.target.value })}
                         style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid var(--glass-border)', borderRadius: '4px' }}
                     >
                         <option value="manual">Manual Only</option>
                         <option value="daynight">Day/Night Automation</option>
                     </select>
 
-                    <div style={{ display: 'flex', gap: '1rem', opacity: config.mode === 'manual' ? 0.3 : 1, pointerEvents: config.mode === 'manual' ? 'none' : 'auto' }}>
+                    <div style={{ display: 'flex', gap: '1rem', opacity: editConfig.mode === 'manual' ? 0.3 : 1, pointerEvents: editConfig.mode === 'manual' ? 'none' : 'auto' }}>
                         <div style={{ flex: 1 }}>
                             <label style={{ fontSize: '0.85rem' }}>Turn ON</label>
-                            <input type="time" value={config.day_start.substring(0, 5)} onChange={(e) => setConfig({ ...config, day_start: e.target.value + ':00' })} style={{ width: '100%' }} />
+                            <input type="time" value={editConfig.day_start.substring(0, 5)} onChange={(e) => setEditConfig({ ...editConfig, day_start: e.target.value + ':00' })} style={{ width: '100%' }} />
                         </div>
                         <div style={{ flex: 1 }}>
                             <label style={{ fontSize: '0.85rem' }}>Turn OFF</label>
-                            <input type="time" value={config.day_end.substring(0, 5)} onChange={(e) => setConfig({ ...config, day_end: e.target.value + ':00' })} style={{ width: '100%' }} />
+                            <input type="time" value={editConfig.day_end.substring(0, 5)} onChange={(e) => setEditConfig({ ...editConfig, day_end: e.target.value + ':00' })} style={{ width: '100%' }} />
                         </div>
                     </div>
 
                     <button
                         onClick={handleConfigSave}
-                        style={{ marginTop: '0.5rem', opacity: config.mode === 'manual' ? 0.3 : 1, pointerEvents: config.mode === 'manual' ? 'none' : 'auto' }}
+                        style={{ marginTop: '0.5rem' }}
                     >
-                        Save Schedule Time
+                        Save Configuration
                     </button>
+
+                    {/* Visual indicator of unsaved changes */}
+                    {(editConfig.mode !== config.mode || editConfig.day_start !== config.day_start || editConfig.day_end !== config.day_end) && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--accent-yellow)', marginTop: '-0.25rem' }}>
+                            Unsaved changes
+                        </span>
+                    )}
                 </div>
             </div>
         </div>

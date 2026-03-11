@@ -1,11 +1,29 @@
 from fastapi import APIRouter
-from ...scale import manager as scale_manager
+from ...scale import manager
 
-router = APIRouter(prefix="/scale", tags=["scale"])
+router = APIRouter(
+    prefix="/scale",
+    tags=["scale"],
+)
 
-@router.get("/weight")
-def get_weight():
+@router.get("/read")
+def read_scale():
     """
-    Returns the latest continuously polled weight from the U.S. Solid scale.
+    Returns the current measured weight in grams.
+    Factors in both added liquid (dispensed by pumps) and simulated plant growth.
     """
-    return scale_manager.scale.get_latest()
+    return {
+        "weight": manager.get_weight(),
+        "status": "ok"
+    }
+
+@router.post("/tare")
+def tare_scale():
+    """
+    Zeroes the scale. Subsequent reads will be relative to the current weight.
+    """
+    new_weight = manager.tare()
+    return {
+        "weight": new_weight,
+        "status": "tared"
+    }

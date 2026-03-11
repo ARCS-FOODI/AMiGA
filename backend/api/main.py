@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import pumps, sensors, light, control
+from .routers import pumps, sensors, light, control, scale
 from .. import pumps as hs_pumps
 from .. import sensors as hs_sensors
 from .. import light as hs_light
@@ -52,6 +52,7 @@ app.include_router(pumps.router)
 app.include_router(sensors.router)
 app.include_router(light.router)
 app.include_router(control.router)
+app.include_router(scale.router)
 
 
 @app.get("/config", tags=["system"])

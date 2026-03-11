@@ -1,150 +1,92 @@
-# backend/scale.py
-from __future__ import annotations
-
+import json
+import os
 import threading
-import time
-import serial
-import re
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Dict, Any
 
-from .settings import SIMULATE
-from . import master_log
-
-SCALE_PORT = "/dev/ttyUSB0"
-SCALE_BAUDRATE = 9600
-SCALE_BYTESIZE = serial.EIGHTBITS
-SCALE_PARITY = serial.PARITY_NONE
-SCALE_STOPBITS = serial.STOPBITS_ONE
-SCALE_TIMEOUT = 1.0
-
-
-class MockSerial:
-    def __init__(self, *args, **kwargs):
-        self.is_open = True
-        self.mock_weight = 0.0
-
-    def readline(self) -> bytes:
-        # Simulate an evolving weight
-        self.mock_weight += 0.1
-        if self.mock_weight > 5000:
-            self.mock_weight = 0.0
-        
-        # Give a slight delay simulating serial reading speed
-        time.sleep(0.5)
-        # Assuming US Solid scale outputs something like "   123.45 g \r\n"
-        return f"   {self.mock_weight:.2f} g \r\n".encode("ascii")
-        
-    def close(self):
-        self.is_open = False
-
-
-class Scale:
-    """
-    Handles serial connection to the USS-DBS61-50 U.S. Solid Scale.
-    Continously polls the balance and stores the latest reading to avoid blocking REST APIs.
-    """
-    def __init__(self, port: str = SCALE_PORT, baudrate: int = SCALE_BAUDRATE):
-        self.port = port
-        self.baudrate = baudrate
-        self.ser: Optional[serial.Serial] = None
-        self._latest_weight: Optional[float] = None
-        self._latest_unit: Optional[str] = None
-        self._running: bool = False
-        self._thread: Optional[threading.Thread] = None
-        self._lock = threading.Lock()
-
-    def start(self):
-        with self._lock:
-            if self._running:
-                return
-            self._running = True
-
-            try:
-                if SIMULATE:
-                    self.ser = MockSerial()
-                else:
-                    self.ser = serial.Serial(
-                        port=self.port,
-                        baudrate=self.baudrate,
-                        bytesize=SCALE_BYTESIZE,
-                        parity=SCALE_PARITY,
-                        stopbits=SCALE_STOPBITS,
-                        timeout=SCALE_TIMEOUT
-                    )
-                # start reading thread
-                self._thread = threading.Thread(target=self._read_loop, daemon=True)
-                self._thread.start()
-            except Exception as e:
-                self._running = False
-                print(f"[ERROR] Failed to init Scale serial on {self.port}: {e}")
-                try:
-                    master_log.log_event("scale_error", source="Scale.start", error=str(e))
-                except Exception:
-                    pass
-
-    @staticmethod
-    def parse_weight_line(text: str) -> tuple[Optional[float], Optional[str]]:
-        pattern = re.compile(r"[-+]?\s*(\d*\.?\d+)\s*([a-zA-Z]+)")
-        match = pattern.search(text)
-        if match:
-            wt_str = match.group(1).replace(" ", "")
-            unit = match.group(2)
-            try:
-                wt = float(wt_str)
-                return wt, unit
-            except ValueError:
-                pass
-        return None, None
-
-    def _read_loop(self):
-        while self._running:
-            try:
-                if self.ser and getattr(self.ser, 'is_open', False):
-                    line = self.ser.readline()
-                    if line:
-                        text = line.decode('ascii', errors='ignore').strip()
-                        if not text:
-                            continue
-                        
-                        wt, unit = self.parse_weight_line(text)
-                        if wt is not None:
-                            with self._lock:
-                                self._latest_weight = wt
-                                self._latest_unit = unit
-                else:
-                    time.sleep(1.0) # Wait before retry if not open
-            except Exception as e:
-                # If reading fails, pause a bit to avoid CPU spin lock
-                time.sleep(0.5)
-
-    def stop(self):
-        with self._lock:
-            self._running = False
-            if self.ser:
-                try:
-                    self.ser.close()
-                except Exception:
-                    pass
-                self.ser = None
-
-    def get_latest(self) -> Dict[str, Any]:
-        with self._lock:
-            return {
-                "weight": self._latest_weight,
-                "unit": self._latest_unit,
-                "port": self.port,
-                "simulated": SIMULATE
-            }
+ROOT = Path(__file__).resolve().parents[0]
+DATA_DIR = ROOT / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+SCALE_STATE_FILE = DATA_DIR / "scale_state.json"
 
 class ScaleManager:
+    """
+    Simulates a digital scale that measures weight in grams.
+    Since we are simulating, we keep track of:
+      1. Water weight added via pumps
+      2. Simulated plant biomass growth over time
+    """
     def __init__(self):
-        self.scale = Scale()
+        self._lock = threading.Lock()
+        
+        # Internal state
+        self.water_g = 0.0
+        self.growth_g = 0.0
+        self.tare_offset_g = 0.0
+        
+        # Growth simulation rate: e.g. 5g per hour
+        self.growth_rate_g_per_sec = 5.0 / 3600.0
+        
+        self.last_update_time = None
+        self._load_state()
 
-    def startup(self):
-        self.scale.start()
+    def _load_state(self):
+        if SCALE_STATE_FILE.exists():
+            try:
+                data = json.loads(SCALE_STATE_FILE.read_text())
+                self.water_g = data.get("water_g", 0.0)
+                self.growth_g = data.get("growth_g", 0.0)
+                self.tare_offset_g = data.get("tare_offset_g", 0.0)
+                self.last_update_time = data.get("last_update_time", None)
+            except Exception as e:
+                print(f"[SCALE] Error loading state: {e}")
 
-    def shutdown(self):
-        self.scale.stop()
+    def _save_state(self, current_time: float):
+        try:
+            data = {
+                "water_g": self.water_g,
+                "growth_g": self.growth_g,
+                "tare_offset_g": self.tare_offset_g,
+                "last_update_time": current_time
+            }
+            tmp = SCALE_STATE_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data, indent=2))
+            tmp.replace(SCALE_STATE_FILE)
+        except Exception as e:
+            print(f"[SCALE] Error saving state: {e}")
 
-# Global singleton
+    def _simulate_growth(self):
+        """Update plant growth since the last time we checked."""
+        import time
+        now = time.time()
+        
+        if self.last_update_time is not None:
+            elapsed = max(0, now - self.last_update_time)
+            self.growth_g += elapsed * self.growth_rate_g_per_sec
+            
+        self._save_state(now)
+        self.last_update_time = now
+
+    def add_water_g(self, grams: float):
+        """Called by the pump module when water/food is dispensed."""
+        with self._lock:
+            self.water_g += grams
+            self._simulate_growth()
+
+    def get_weight(self) -> float:
+        """Returns the current simulated weight reading, offset by the tare."""
+        with self._lock:
+            self._simulate_growth()
+            absolute_weight = self.water_g + self.growth_g
+            return absolute_weight - self.tare_offset_g
+
+    def tare(self) -> float:
+        """Zero out the scale (set the tare offset to the current absolute weight)."""
+        with self._lock:
+            self._simulate_growth()
+            absolute_weight = self.water_g + self.growth_g
+            self.tare_offset_g = absolute_weight
+            self._save_state(self.last_update_time)
+            return 0.0
+
 manager = ScaleManager()

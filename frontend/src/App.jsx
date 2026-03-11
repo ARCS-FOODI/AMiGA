@@ -5,6 +5,7 @@ import LightControl from './components/LightControl'
 import PumpControl from './components/PumpControl'
 import SensorMonitor from './components/SensorMonitor'
 import AutomationRules from './components/AutomationRules'
+import ScaleMonitor from './components/ScaleMonitor'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <PumpControl pumpName="water" colorBase="var(--accent-blue)" hoverBase="#3b82f6" />
         <PumpControl pumpName="food" colorBase="var(--accent-green)" hoverBase="#10b981" />
         <SensorMonitor />
+        <ScaleMonitor />
         <AutomationRules />
       </main>
     </>

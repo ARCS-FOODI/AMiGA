@@ -56,3 +56,6 @@ export const runControlCycle = (data) =>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
     }).then(handleResponse);
+
+export const getScaleWeight = () => fetch(`${API_BASE}/scale/read`).then(handleResponse);
+export const tareScale = () => fetch(`${API_BASE}/scale/tare`, { method: "POST" }).then(handleResponse);

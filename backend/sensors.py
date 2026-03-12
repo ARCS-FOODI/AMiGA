@@ -54,8 +54,8 @@ else:
 
 class SensorArray:
     """
-    Object-Oriented representation of the Sensor Array.
-    Manages the I2C ADC connection and optional Digital Out (DO) pin.
+    Object-Oriented representation of a single ADS1115 Sensor Array.
+    Manages the connection to a specific I2C address.
     """
     def __init__(
         self, 
@@ -69,22 +69,23 @@ class SensorArray:
         self.do_pin = do_pin
         self.chip = chip
         
-        self._i2c = None
         self._ads = None
         self._chans = []
-        
         self._handle = None
         self._lock = threading.Lock()
 
-    def initialize(self, handle: int = None, use_digital: bool = False) -> None:
-        """Initialize the I2C connection to the ADC and optionally the DO pin."""
+    def initialize(self, i2c_bus, handle: int = None, use_digital: bool = False) -> None:
+        """Initialize the ADC at this specific address and optionally the DO pin."""
         with self._lock:
-            # Init I2C ADC
-            if not self._i2c:
-                self._i2c = busio.I2C(board.SCL, board.SDA)
-                self._ads = ADS.ADS1115(self._i2c, address=self.addr)
-                self._ads.gain = self.gain
-                self._chans = [AnalogIn(self._ads, ch) for ch in (0, 1, 2, 3)]
+            # Init ADS1115 on the provided I2C bus
+            if not self._ads:
+                try:
+                    self._ads = ADS.ADS1115(i2c_bus, address=self.addr)
+                    self._ads.gain = self.gain
+                    self._chans = [AnalogIn(self._ads, ch) for ch in (0, 1, 2, 3)]
+                except Exception as e:
+                    print(f"[ERROR] Failed to initialize ADC at {hex(self.addr)}: {e}")
+                    raise
 
             # Init DO pin if requested
             if use_digital and handle is not None:
@@ -119,7 +120,7 @@ class SensorArray:
     ) -> Dict[str, Any]:
         """Take one or more sensor snapshots."""
         if not self._chans:
-            raise RuntimeError("SensorArray is not initialized.")
+            raise RuntimeError(f"SensorArray at {hex(self.addr)} is not initialized.")
 
         readings: List[Dict[str, Any]] = []
 
@@ -167,33 +168,47 @@ class SensorArray:
 
 
 class SensorManager:
-    """Global manager for sensor hardware."""
+    """Global manager for multiple sensor hardware arrays."""
     def __init__(self, chip_index: int = CHIP):
         self.chip_index = chip_index
         self._handle = None
-        self.main_array = SensorArray(chip=self.chip_index)
+        self._i2c = None
+        self._arrays: Dict[int, SensorArray] = {}
+        self._lock = threading.Lock()
 
-    def startup(self, use_digital: bool = True) -> None:
-        """Open GPIO chip for digital pins and initialize I2C."""
-        self._handle = lgpio.gpiochip_open(self.chip_index)
-        self.main_array.initialize(self._handle, use_digital=use_digital)
+    def startup(self) -> None:
+        """Open common I2C bus and GPIO chip."""
+        with self._lock:
+            if not self._i2c:
+                self._i2c = busio.I2C(board.SCL, board.SDA)
+            if not self._handle:
+                self._handle = lgpio.gpiochip_open(self.chip_index)
+
+    def get_array(self, addr: int, do_pin: int = DEFAULT_DO_PIN, use_digital: bool = True) -> SensorArray:
+        """Get or create a SensorArray for a specific address."""
+        self.startup()
+        with self._lock:
+            if addr not in self._arrays:
+                print(f"[SENSORS] Initializing new sensor array at {hex(addr)}")
+                new_array = SensorArray(addr=addr, do_pin=do_pin, chip=self.chip_index)
+                new_array.initialize(self._i2c, self._handle, use_digital=use_digital)
+                self._arrays[addr] = new_array
+            return self._arrays[addr]
 
     def shutdown(self) -> None:
-        """Release the GPIO chip."""
-        if self._handle is not None:
-            lgpio.gpiochip_close(self._handle)
-            self._handle = None
-            self.main_array._handle = None
+        """Release the GPIO chip and clear arrays."""
+        with self._lock:
+            if self._handle is not None:
+                lgpio.gpiochip_close(self._handle)
+                self._handle = None
+            self._arrays.clear()
+            self._i2c = None
 
 
 # Global singleton
 manager = SensorManager()
 
 # --- Legacy Procedural Wrappers ---
-def _ensure_manager(use_digital: bool = False):
-    if manager._handle is None:
-        manager.startup(use_digital=use_digital)
-
 def snapshot_sensors(
     addr: int = DEFAULT_ADDR,
     gain: float = DEFAULT_GAIN,
@@ -205,14 +220,15 @@ def snapshot_sensors(
     invert_do: bool = False,
 ) -> Dict[str, Any]:
     
-    _ensure_manager(use_digital)
+    # Get the array for the specific address
+    array = manager.get_array(addr, do_pin=do_pin, use_digital=use_digital)
     
-    # Allow overriding defaults for the snapshot call
-    manager.main_array.addr = addr
-    manager.main_array.gain = gain
-    manager.main_array.do_pin = do_pin
-    
-    return manager.main_array.snapshot(
+    # Update temporary runtime settings
+    array.gain = gain
+    if array._ads:
+        array._ads.gain = gain
+        
+    return array.snapshot(
         samples=samples,
         interval=interval,
         avg=avg,

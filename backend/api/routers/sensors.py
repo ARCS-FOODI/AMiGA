@@ -8,12 +8,19 @@ router = APIRouter(prefix="/sensors", tags=["sensors"])
 @router.post("/read")
 def api_sensors(req: SensorsRequest):
     try:
-        # Override manager defaults with request specifics before snapshot
-        sensor_manager.main_array.addr = req.addr
-        sensor_manager.main_array.gain = req.gain
-        sensor_manager.main_array.do_pin = req.do_pin
+        # Get the specific array for the requested address
+        array = sensor_manager.get_array(
+            req.addr, 
+            do_pin=req.do_pin, 
+            use_digital=req.use_digital
+        )
         
-        return sensor_manager.main_array.snapshot(
+        # Update gain runtime setting
+        array.gain = req.gain
+        if array._ads:
+            array._ads.gain = req.gain
+        
+        return array.snapshot(
             samples=req.samples,
             interval=req.interval,
             avg=req.avg,

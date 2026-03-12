@@ -5,10 +5,10 @@ import time
 import threading
 from typing import Dict, Any, List
 
-from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE, GLOBAL_PUMP_EN
+from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE_GPIO, GLOBAL_PUMP_EN
 from . import config_store, master_log, scale
 
-if not SIMULATE:
+if not SIMULATE_GPIO:
     import lgpio
 else:
     class MockLgpio:
@@ -106,7 +106,7 @@ class StepperPump:
             raise RuntimeError(f"Pump '{self.name}' is already running.")
 
         self.is_running = True
-        if SIMULATE: print(f"[MOCK] Pump '{self.name}' running for {seconds}s at {hz}Hz ({direction})")
+        if SIMULATE_GPIO: print(f"[MOCK] Pump '{self.name}' running for {seconds}s at {hz}Hz ({direction})")
         try:
             self._set_direction(direction)
             # Notify global manager we are starting

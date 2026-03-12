@@ -124,6 +124,21 @@ button.success:hover {
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
 }
 
+button.purple {
+  background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+  color: white;
+}
+
+button.purple:hover {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* Dynamic State Classes */
 .status-indicator {
   display: inline-block;

@@ -7,6 +7,7 @@ from .routers import pumps, sensors, light, control, scale
 from .. import pumps as hs_pumps
 from .. import sensors as hs_sensors
 from .. import light as hs_light
+from .. import scale as hs_scale
 from .. import grow_scheduler
 from .. import config_store
 from ..settings import PUMP_PINS, DEFAULT_ADDR, DEFAULT_GAIN, DEFAULT_AVG, DEFAULT_THRESH, DEFAULT_HZ, DEFAULT_DIR, DEFAULT_VOTE_K, DEFAULT_IRR_SEC
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI):
     hs_pumps.manager.startup()
     hs_light.manager.startup()
     hs_sensors.manager.startup(use_digital=True)
+    hs_scale.manager.startup()
     grow_scheduler.start()
     
     print("\n" + "="*50)
@@ -34,6 +36,7 @@ async def lifespan(app: FastAPI):
         hs_pumps.manager.shutdown()
         hs_light.manager.shutdown()
         hs_sensors.manager.shutdown()
+        hs_scale.manager.shutdown()
 
 
 app = FastAPI(title="AMiGA API", lifespan=lifespan)

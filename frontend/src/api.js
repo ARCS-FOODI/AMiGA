@@ -43,12 +43,14 @@ export const calibratePump = (pump, ml_per_sec) =>
         body: JSON.stringify({ pump, ml_per_sec })
     }).then(handleResponse);
 
-export const snapshotSensors = (samples = 1, avg = 5) =>
-    fetch(`${API_BASE}/sensors/read`, {
+export const snapshotSensors = (options = {}) => {
+    const { samples = 1, avg = 5, addr = 0x48, do_pin = 6 } = options;
+    return fetch(`${API_BASE}/sensors/read`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ samples, avg })
+        body: JSON.stringify({ samples, avg, addr, do_pin })
     }).then(handleResponse);
+};
 
 export const runControlCycle = (data) =>
     fetch(`${API_BASE}/control/cycle-once`, {

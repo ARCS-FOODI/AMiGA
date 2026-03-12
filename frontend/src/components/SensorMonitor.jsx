@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { snapshotSensors } from '../api';
 
-export default function SensorMonitor() {
+export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48, doPin = 6 }) {
     const [readings, setReadings] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -10,7 +10,7 @@ export default function SensorMonitor() {
         setLoading(true);
         setError(null);
         try {
-            const data = await snapshotSensors(1, 5);
+            const data = await snapshotSensors({ addr, do_pin: doPin, samples: 1, avg: 5 });
             setReadings(data.readings[0]);
         } catch (err) {
             setError(err.message);
@@ -36,7 +36,7 @@ export default function SensorMonitor() {
     return (
         <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3>🌡️ Soil Sensors</h3>
+                <h3>🌡️ {title}</h3>
                 <button onClick={pollSensors} disabled={loading} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                     {loading ? 'Polling...' : 'Poll Now'}
                 </button>

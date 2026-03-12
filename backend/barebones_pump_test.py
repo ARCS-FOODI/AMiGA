@@ -87,16 +87,16 @@ def test_pump(pump_name, duration_sec, hz, direction):
         lgpio.gpio_claim_output(handle, step_pin, 0)
         lgpio.gpio_claim_output(handle, dir_pin, 0)
 
-        # If EN is present, claim it and disable it (EN is usually active LOW, so 1 = disabled)
+        # If EN is present, claim it and disable it (EN is usually active HIGH, so 0 = disabled)
         if en_pin is not None:
-            lgpio.gpio_claim_output(handle, en_pin, 1) 
+            lgpio.gpio_claim_output(handle, en_pin, 0) 
 
         # Set direction
         lgpio.gpio_write(handle, dir_pin, direction)
 
-        # Enable driver
+        # Enable driver (1 = enabled)
         if en_pin is not None:
-            lgpio.gpio_write(handle, en_pin, 0)
+            lgpio.gpio_write(handle, en_pin, 1)
 
         print("Running the pump now...")
         
@@ -119,7 +119,7 @@ def test_pump(pump_name, duration_sec, hz, direction):
         # Clean up and disable driver
         if en_pin is not None:
             try:
-                lgpio.gpio_write(handle, en_pin, 1)
+                lgpio.gpio_write(handle, en_pin, 0)
             except Exception:
                 pass
         lgpio.gpiochip_close(handle)

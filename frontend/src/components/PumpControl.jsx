@@ -6,12 +6,19 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
     const [seconds, setSeconds] = useState('5');
     const [running, setRunning] = useState(false);
     const [error, setError] = useState(null);
+    const [hzMode, setHzMode] = useState('preset');
+    const [presetHz, setPresetHz] = useState('1000');
+    const [customHz, setCustomHz] = useState('1000');
 
-    const handleRunMl = async () => {
+    const getActiveHz = () => {
+        return hzMode === 'preset' ? parseFloat(presetHz) : parseFloat(customHz);
+    };
+
+    const handleRunMl = async (dir = 'forward') => {
         setRunning(true);
         setError(null);
         try {
-            await runPumpMl(pumpName, parseFloat(ml));
+            await runPumpMl(pumpName, parseFloat(ml), getActiveHz(), dir);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -19,11 +26,11 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
         }
     };
 
-    const handleRunSecs = async () => {
+    const handleRunSecs = async (dir = 'forward') => {
         setRunning(true);
         setError(null);
         try {
-            await runPumpSeconds(pumpName, parseFloat(seconds));
+            await runPumpSeconds(pumpName, parseFloat(seconds), getActiveHz(), dir);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -44,6 +51,42 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
 
             {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step Frequency (Torque / Speed)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <select
+                        value={hzMode === 'preset' ? presetHz : 'custom'}
+                        onChange={(e) => {
+                            if (e.target.value === 'custom') {
+                                setHzMode('custom');
+                            } else {
+                                setHzMode('preset');
+                                setPresetHz(e.target.value);
+                            }
+                        }}
+                        disabled={running}
+                        style={{ flex: hzMode === 'custom' ? 1 : 2 }}
+                    >
+                        <option value="200">200 Hz (Slow / High Torque)</option>
+                        <option value="500">500 Hz</option>
+                        <option value="1000">1000 Hz (Default)</option>
+                        <option value="2000">2000 Hz (Fast / Low Torque)</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+
+                    {hzMode === 'custom' && (
+                        <input
+                            type="number"
+                            value={customHz}
+                            onChange={e => setCustomHz(e.target.value)}
+                            disabled={running}
+                            style={{ flex: 1 }}
+                            placeholder="Hz"
+                        />
+                    )}
+                </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                     <div style={{ flex: 2 }}>
@@ -56,13 +99,24 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             style={{ width: '100%' }}
                         />
                     </div>
-                    <button
-                        onClick={handleRunMl}
-                        disabled={running}
-                        style={{ flex: 1, backgroundColor: colorBase }}
-                    >
-                        {running ? 'Running...' : 'Run'}
-                    </button>
+                    <div style={{ display: 'flex', flex: 2, gap: '0.5rem' }}>
+                        <button
+                            onClick={() => handleRunMl('forward')}
+                            disabled={running}
+                            style={{ flex: 1, backgroundColor: colorBase, padding: '0.5rem' }}
+                            title="Forward"
+                        >
+                            Fwd
+                        </button>
+                        <button
+                            onClick={() => handleRunMl('reverse')}
+                            disabled={running}
+                            style={{ flex: 1, backgroundColor: 'transparent', color: 'var(--text-primary)', border: `1px solid ${colorBase}`, padding: '0.5rem' }}
+                            title="Reverse"
+                        >
+                            Rev
+                        </button>
+                    </div>
                 </div>
 
                 <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)' }} />
@@ -78,13 +132,24 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             style={{ width: '100%' }}
                         />
                     </div>
-                    <button
-                        onClick={handleRunSecs}
-                        disabled={running}
-                        style={{ flex: 1 }}
-                    >
-                        Purge
-                    </button>
+                    <div style={{ display: 'flex', flex: 2, gap: '0.5rem' }}>
+                        <button
+                            onClick={() => handleRunSecs('forward')}
+                            disabled={running}
+                            style={{ flex: 1, padding: '0.5rem' }}
+                            title="Forward"
+                        >
+                            Fwd
+                        </button>
+                        <button
+                            onClick={() => handleRunSecs('reverse')}
+                            disabled={running}
+                            style={{ flex: 1, backgroundColor: 'transparent', border: '1px solid var(--text-secondary)', color: 'var(--text-secondary)', padding: '0.5rem' }}
+                            title="Reverse"
+                        >
+                            Rev
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

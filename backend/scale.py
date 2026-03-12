@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional
 from .settings import SIMULATE_SCALE
 
 # ── Serial configuration (USS-DBS61-50 defaults) ────────────────────────────
-SCALE_PORT = "/dev/ttyUSB0"
+SCALE_PORT = "/dev/ttyUSB1"
 SCALE_BAUDRATE = 9600
 
 # ── Persistent state file (simulation mode) ──────────────────────────────────

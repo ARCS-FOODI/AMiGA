@@ -5,16 +5,14 @@ PUMP_PINS: Dict[str, Dict[str, int]] = {
     "food": {      # pump for food solution
         "STEP": 27,  
         "DIR": 22,   
+        "EN": 24,
     },
     "water": {  # pump for water
         "STEP": 16,
         "DIR": 26,
+        "EN": 17,
     },
 }
-
-# Global Enable Pin (Active LOW) shared by all stepper motor drivers
-# E.g. connect both drivers' EN pins to this physical board pin
-GLOBAL_PUMP_EN = 17
 
 # GPIO chip index
 CHIP = 0  # usually /dev/gpiochip0
@@ -32,7 +30,7 @@ DEFAULT_THRESH = 3.00       # V threshold for irrigation logic with 5V sensors
 DEFAULT_DO_PIN = 6          # optional digital wet/dry
 
 # Motor defaults
-DEFAULT_HZ     = 10000
+DEFAULT_HZ     = 1000
 DEFAULT_DIR    = "forward"
 
 # Full scenario defaults

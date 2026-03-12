@@ -6,12 +6,19 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
     const [seconds, setSeconds] = useState('5');
     const [running, setRunning] = useState(false);
     const [error, setError] = useState(null);
+    const [hzMode, setHzMode] = useState('preset');
+    const [presetHz, setPresetHz] = useState('1000');
+    const [customHz, setCustomHz] = useState('1000');
+
+    const getActiveHz = () => {
+        return hzMode === 'preset' ? parseFloat(presetHz) : parseFloat(customHz);
+    };
 
     const handleRunMl = async (dir = 'forward') => {
         setRunning(true);
         setError(null);
         try {
-            await runPumpMl(pumpName, parseFloat(ml), 1000, dir);
+            await runPumpMl(pumpName, parseFloat(ml), getActiveHz(), dir);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -23,7 +30,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
         setRunning(true);
         setError(null);
         try {
-            await runPumpSeconds(pumpName, parseFloat(seconds), 1000, dir);
+            await runPumpSeconds(pumpName, parseFloat(seconds), getActiveHz(), dir);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -43,6 +50,42 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
             </div>
 
             {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step Frequency (Torque / Speed)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <select
+                        value={hzMode === 'preset' ? presetHz : 'custom'}
+                        onChange={(e) => {
+                            if (e.target.value === 'custom') {
+                                setHzMode('custom');
+                            } else {
+                                setHzMode('preset');
+                                setPresetHz(e.target.value);
+                            }
+                        }}
+                        disabled={running}
+                        style={{ flex: hzMode === 'custom' ? 1 : 2 }}
+                    >
+                        <option value="200">200 Hz (Slow / High Torque)</option>
+                        <option value="500">500 Hz</option>
+                        <option value="1000">1000 Hz (Default)</option>
+                        <option value="2000">2000 Hz (Fast / Low Torque)</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+
+                    {hzMode === 'custom' && (
+                        <input
+                            type="number"
+                            value={customHz}
+                            onChange={e => setCustomHz(e.target.value)}
+                            disabled={running}
+                            style={{ flex: 1 }}
+                            placeholder="Hz"
+                        />
+                    )}
+                </div>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>

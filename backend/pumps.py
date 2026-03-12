@@ -53,7 +53,7 @@ class StepperPump:
         lgpio.gpio_claim_output(self._handle, self.pins["STEP"], 0)
         lgpio.gpio_claim_output(self._handle, self.pins["DIR"], 0)
         if "EN" in self.pins:
-            lgpio.gpio_claim_output(self._handle, self.pins["EN"], 1)
+            lgpio.gpio_claim_output(self._handle, self.pins["EN"], 0)
 
     def _set_direction(self, dir_name: str) -> None:
         """Internal helper to set the DIR pin."""
@@ -73,8 +73,8 @@ class StepperPump:
         if not self._handle or "EN" not in self.pins:
             return
             
-        # EN is active LOW (0 awake, 1 sleep)
-        val = 0 if enable else 1
+        # Try Active HIGH logic (1 awake, 0 sleep)
+        val = 1 if enable else 0
         lgpio.gpio_write(self._handle, self.pins["EN"], val)
 
     def _step_loop(self, hz: float, seconds: float) -> None:
@@ -266,7 +266,7 @@ class PumpManager:
             # Ensure all EN pins are put to sleep
             for pump in self.pumps.values():
                 if "EN" in pump.pins:
-                    lgpio.gpio_write(self._handle, pump.pins["EN"], 1)
+                    lgpio.gpio_write(self._handle, pump.pins["EN"], 0)
             lgpio.gpiochip_close(self._handle)
             self._handle = None
             

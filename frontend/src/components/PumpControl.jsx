@@ -7,11 +7,11 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
     const [running, setRunning] = useState(false);
     const [error, setError] = useState(null);
 
-    const handleRunMl = async () => {
+    const handleRunMl = async (dir = 'forward') => {
         setRunning(true);
         setError(null);
         try {
-            await runPumpMl(pumpName, parseFloat(ml));
+            await runPumpMl(pumpName, parseFloat(ml), 1000, dir);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -19,11 +19,11 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
         }
     };
 
-    const handleRunSecs = async () => {
+    const handleRunSecs = async (dir = 'forward') => {
         setRunning(true);
         setError(null);
         try {
-            await runPumpSeconds(pumpName, parseFloat(seconds));
+            await runPumpSeconds(pumpName, parseFloat(seconds), 1000, dir);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -56,13 +56,24 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             style={{ width: '100%' }}
                         />
                     </div>
-                    <button
-                        onClick={handleRunMl}
-                        disabled={running}
-                        style={{ flex: 1, backgroundColor: colorBase }}
-                    >
-                        {running ? 'Running...' : 'Run'}
-                    </button>
+                    <div style={{ display: 'flex', flex: 2, gap: '0.5rem' }}>
+                        <button
+                            onClick={() => handleRunMl('forward')}
+                            disabled={running}
+                            style={{ flex: 1, backgroundColor: colorBase, padding: '0.5rem' }}
+                            title="Forward"
+                        >
+                            Fwd
+                        </button>
+                        <button
+                            onClick={() => handleRunMl('reverse')}
+                            disabled={running}
+                            style={{ flex: 1, backgroundColor: 'transparent', color: 'var(--text-primary)', border: `1px solid ${colorBase}`, padding: '0.5rem' }}
+                            title="Reverse"
+                        >
+                            Rev
+                        </button>
+                    </div>
                 </div>
 
                 <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)' }} />
@@ -78,13 +89,24 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             style={{ width: '100%' }}
                         />
                     </div>
-                    <button
-                        onClick={handleRunSecs}
-                        disabled={running}
-                        style={{ flex: 1 }}
-                    >
-                        Purge
-                    </button>
+                    <div style={{ display: 'flex', flex: 2, gap: '0.5rem' }}>
+                        <button
+                            onClick={() => handleRunSecs('forward')}
+                            disabled={running}
+                            style={{ flex: 1, padding: '0.5rem' }}
+                            title="Forward"
+                        >
+                            Fwd
+                        </button>
+                        <button
+                            onClick={() => handleRunSecs('reverse')}
+                            disabled={running}
+                            style={{ flex: 1, backgroundColor: 'transparent', border: '1px solid var(--text-secondary)', color: 'var(--text-secondary)', padding: '0.5rem' }}
+                            title="Reverse"
+                        >
+                            Rev
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

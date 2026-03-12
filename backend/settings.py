@@ -32,7 +32,7 @@ DEFAULT_THRESH = 3.00       # V threshold for irrigation logic with 5V sensors
 DEFAULT_DO_PIN = 6          # optional digital wet/dry
 
 # Motor defaults
-DEFAULT_HZ     = 10000
+DEFAULT_HZ     = 1000
 DEFAULT_DIR    = "forward"
 
 # Full scenario defaults

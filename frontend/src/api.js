@@ -21,14 +21,14 @@ export const setLightConfig = (data) =>
         body: JSON.stringify(data)
     }).then(handleResponse);
 
-export const runPumpSeconds = (pump, seconds, hz = 10000, direction = "forward") =>
+export const runPumpSeconds = (pump, seconds, hz = 1000, direction = "forward") =>
     fetch(`${API_BASE}/pump/run-seconds`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pump, seconds, hz, direction })
     }).then(handleResponse);
 
-export const runPumpMl = (pump, ml, hz = 10000, direction = "forward") =>
+export const runPumpMl = (pump, ml, hz = 1000, direction = "forward") =>
     fetch(`${API_BASE}/pump/run-ml`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -20,4 +20,13 @@ This document serves as a record for AMiGA's physical hardware integration, wiri
 
 ## Future Components...
 
-*Add details for new hardware (pumps, sensors, probes, etc.) below as they are integrated or documented.*
+### Pumps
+- **Water Pump**
+  - **STEP:** BCM 16
+  - **DIR:** BCM 26
+  - **EN:** BCM 17
+- **Food Pump**
+  - **STEP:** BCM 27
+  - **DIR:** BCM 22
+  - **EN:** BCM 24
+- **Note:** EN pins are active LOW (Logic `0` enables the driver, `1` disables/sleeps). Due to earlier vibration issues with the food pump, the pumps no longer share an EN pin and instead have dedicated pins mapped to each driver.

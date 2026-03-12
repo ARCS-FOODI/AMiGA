@@ -5,7 +5,7 @@ import time
 import threading
 from typing import Dict, Any, List
 
-from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE_GPIO, GLOBAL_PUMP_EN
+from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE_GPIO
 from . import config_store, master_log, scale
 
 if not SIMULATE_GPIO:
@@ -69,11 +69,13 @@ class StepperPump:
             raise ValueError("dir must be 'forward' or 'reverse'")
 
     def _enable_driver(self, enable: bool) -> None:
-        """
-        [DEPRECATED/REMOVED] internal helper. 
-        EN logic is now handled globally by the PumpManager to allow sharing a single pin.
-        """
-        pass
+        """Internal helper to enable or disable the individual EN pin for this driver."""
+        if not self._handle or "EN" not in self.pins:
+            return
+            
+        # EN is active LOW (0 awake, 1 sleep)
+        val = 0 if enable else 1
+        lgpio.gpio_write(self._handle, self.pins["EN"], val)
 
     def _step_loop(self, hz: float, seconds: float) -> None:
         """Blocking loop that pulses the STEP pin."""
@@ -244,8 +246,6 @@ class PumpManager:
         self._handle = None
         self.pumps: Dict[str, StepperPump] = {}
         
-        self.bcm_global_en = GLOBAL_PUMP_EN
-        self._active_pumps_count = 0
         self._manager_lock = threading.Lock()
         
         # Create instances
@@ -253,44 +253,29 @@ class PumpManager:
             self.pumps[name] = StepperPump(name, pins, self.chip_index)
 
     def startup(self) -> None:
-        """Open GPIO chip and initialize all pump pins and the shared EN pin."""
+        """Open GPIO chip and initialize all pump pins and their EN pins."""
         self._handle = lgpio.gpiochip_open(self.chip_index)
-        
-        # Claim global EN as output, set HIGH (disabled) by default
-        if self.bcm_global_en is not None:
-            lgpio.gpio_claim_output(self._handle, self.bcm_global_en, 1)
 
         for pump in self.pumps.values():
+            pump.initialize(self._handle)
             pump.initialize(self._handle)
 
     def shutdown(self) -> None:
         """Safely disable all pumps and release the GPIO chip."""
         if self._handle is not None:
-            if self.bcm_global_en is not None:
-                lgpio.gpio_write(self._handle, self.bcm_global_en, 1)
+            # Ensure all EN pins are put to sleep
+            for pump in self.pumps.values():
+                if "EN" in pump.pins:
+                    lgpio.gpio_write(self._handle, pump.pins["EN"], 1)
             lgpio.gpiochip_close(self._handle)
             self._handle = None
             
     def request_enable_driver(self, enable: bool) -> None:
         """
-        Thread-safe reference counting to manage the shared EN pin.
-        Only actively pulls LOW when >0 pumps are running.
-        Only pulls HIGH when 0 pumps are running.
+        [DEPRECATED/REMOVED]
+        EN pins are now managed individually by StepperPump objects.
         """
-        if not self._handle or self.bcm_global_en is None:
-            return
-            
-        with self._manager_lock:
-            if enable:
-                self._active_pumps_count += 1
-                if self._active_pumps_count == 1:
-                    # First pump is turning on, awake drivers
-                    lgpio.gpio_write(self._handle, self.bcm_global_en, 0)
-            else:
-                self._active_pumps_count = max(0, self._active_pumps_count - 1)
-                if self._active_pumps_count == 0:
-                    # Last pump has finished, sleep drivers
-                    lgpio.gpio_write(self._handle, self.bcm_global_en, 1)
+        pass
 
     def get_pump(self, name: str) -> StepperPump:
         if name not in self.pumps:
@@ -323,17 +308,15 @@ class PumpManager:
             for p in active_pumps:
                 p.is_running = True
                 p._set_direction(direction)
-                
-            # Awake shared drivers
-            self.request_enable_driver(True)
+                p._enable_driver(True)
                 
             # Run block
             step_for_seconds_multi(self._handle, pump_names, hz, seconds)
             
         finally:
-            self.request_enable_driver(False)
             # Teardown all
             for p in acquired_locks:
+                p._enable_driver(False)
                 p.is_running = False
                 p._lock.release()
 

@@ -52,6 +52,15 @@ export const snapshotSensors = (options = {}) => {
     }).then(handleResponse);
 };
 
+export const snapshotSIS = (options = {}) => {
+    const { port = null, slave_id = null } = options;
+    return fetch(`${API_BASE}/sis/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ port, slave_id })
+    }).then(handleResponse);
+};
+
 export const runControlCycle = (data) =>
     fetch(`${API_BASE}/control/cycle-once`, {
         method: "POST",

@@ -28,7 +28,7 @@ class SoilIntegratedSensor:
                 print(f"[SIS] Hardware init failed: {e}")
 
     def read_data(self) -> Dict[str, Any]:
-        if SIMULATE_GPIO or not self.instrument:
+        if SIMULATE_GPIO:
             # Simulate realistic values
             return {
                 "ph": round(random.uniform(5.5, 7.5), 2),
@@ -41,6 +41,9 @@ class SoilIntegratedSensor:
                 "timestamp": time.strftime('%Y-%m-%d %H:%M:%S'),
                 "simulated": True
             }
+
+        if not self.instrument:
+            raise RuntimeError("SIS Hardware not initialized (check PORT and SLAVE_ID)")
 
         try:
             # Read registers as per test_npk_sensor.py

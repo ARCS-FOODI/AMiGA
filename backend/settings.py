@@ -28,6 +28,8 @@ DEFAULT_WET_V  = 0.00
 # Now interpreted as a **voltage** threshold in volts
 DEFAULT_THRESH = 3.00       # V threshold for irrigation logic with 5V sensors
 DEFAULT_DO_PIN = 6          # optional digital wet/dry
+DEFAULT_SIS_PORT = '/dev/ttyUSB0'
+DEFAULT_SIS_SLAVE_ID = 1
 
 # Motor defaults
 DEFAULT_HZ     = 1000

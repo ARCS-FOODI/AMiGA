@@ -8,3 +8,16 @@
   - Up to 4 analog moisture sensors connected to channels **A0, A1, A2, A3**.
   - Optional digital wet/dry sensor on **BCM 6**.
 - **Controller:** Software managed by `backend/sensors.py` (`SensorArray` class).
+
+## Functional API & Usage
+
+### API Endpoints (`/sensors`)
+- `POST /sensors/read`: Take a snapshot of all channels. Parameters include:
+    - `samples`: Number of distinct snapshots.
+    - `avg`: Number of sub-samples to average per channel for noise reduction.
+    - `interval`: Time between samples.
+    - `invert_do`: Flip digital logic (Wet/Dry).
+
+### System Usage
+- **Closed-Loop Control**: Data from these sensors is the primary input for `control.py`. The "Vote-K" logic counts how many sensors report a voltage above the irrigation threshold before triggering a pump run.
+- **Environment Logging**: Every read is logged to the `master.csv` file with a timestamp and sample index for long-term health tracking.

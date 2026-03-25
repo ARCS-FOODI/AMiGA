@@ -70,8 +70,8 @@ class SensorArray:
         self.chip = chip
         
         self._i2c = None
-        self._ads = None
-        self._chans = []
+        self._ads_dict = {}
+        self._chans_dict = {}
         
         self._handle = None
         self._lock = threading.Lock()
@@ -82,19 +82,28 @@ class SensorArray:
             # Init I2C ADC
             if not self._i2c:
                 self._i2c = busio.I2C(board.SCL, board.SDA)
-                self._ads = ADS.ADS1115(self._i2c, address=self.addr)
-                self._ads.gain = self.gain
-                self._chans = [AnalogIn(self._ads, ch) for ch in (0, 1, 2, 3)]
 
             # Init DO pin if requested
             if use_digital and handle is not None:
                 self._handle = handle
                 lgpio.gpio_claim_input(self._handle, self.do_pin)
 
+    def _ensure_adc(self):
+        if not self._i2c:
+            self._i2c = busio.I2C(board.SCL, board.SDA)
+        if self.addr not in self._ads_dict:
+            ads = ADS.ADS1115(self._i2c, address=self.addr)
+            ads.gain = self.gain
+            self._ads_dict[self.addr] = ads
+            self._chans_dict[self.addr] = [AnalogIn(ads, ch) for ch in (0, 1, 2, 3)]
+        else:
+            self._ads_dict[self.addr].gain = self.gain
+
     def _read_analog_channels(self, avg: int) -> List[float]:
+        self._ensure_adc()
         voltages: List[float] = []
         n = max(1, avg)
-        for ch in self._chans:
+        for ch in self._chans_dict[self.addr]:
             vals = [ch.voltage for _ in range(n)]
             voltages.append(statistics.mean(vals))
         return voltages
@@ -118,12 +127,13 @@ class SensorArray:
         invert_do: bool = False,
     ) -> Dict[str, Any]:
         """Take one or more sensor snapshots."""
-        if not self._chans:
-            raise RuntimeError("SensorArray is not initialized.")
+        if not self._i2c:
+            self.initialize()
 
         readings: List[Dict[str, Any]] = []
 
         with self._lock:
+            self._ensure_adc()
             for i in range(1, samples + 1):
                 volts = self._read_analog_channels(avg)
                 do_state = self._read_digital_state(invert_do)

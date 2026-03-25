@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { snapshotSensors } from '../api';
 
-export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48, doPin = 6 }) {
+export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48 }) {
     const [readings, setReadings] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -10,7 +10,7 @@ export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48, doP
         setLoading(true);
         setError(null);
         try {
-            const data = await snapshotSensors({ addr, do_pin: doPin, samples: 1, avg: 5 });
+            const data = await snapshotSensors({ addr, samples: 1, avg: 5 });
             setReadings(data.readings[0]);
         } catch (err) {
             setError(err.message);
@@ -83,14 +83,6 @@ export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48, doP
                 )}
             </div>
 
-            {readings?.do_state && (
-                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Digital Float Switch:</span>
-                    <span style={{ fontWeight: 'bold', color: readings.do_state === 'WET' ? 'var(--accent-blue)' : 'var(--accent-red)' }}>
-                        {readings.do_state}
-                    </span>
-                </div>
-            )}
         </div>
     );
 }

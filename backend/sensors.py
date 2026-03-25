@@ -88,31 +88,30 @@ class SensorArray:
                 self._handle = handle
                 lgpio.gpio_claim_input(self._handle, self.do_pin)
 
-    def _ensure_adc(self):
+    def _ensure_adc(self, addr, gain):
         if not self._i2c:
             self._i2c = busio.I2C(board.SCL, board.SDA)
-        if self.addr not in self._ads_dict:
-            ads = ADS.ADS1115(self._i2c, address=self.addr)
-            ads.gain = self.gain
-            self._ads_dict[self.addr] = ads
-            self._chans_dict[self.addr] = [AnalogIn(ads, ch) for ch in (0, 1, 2, 3)]
+        if addr not in self._ads_dict:
+            ads = ADS.ADS1115(self._i2c, address=addr)
+            ads.gain = gain
+            self._ads_dict[addr] = ads
+            self._chans_dict[addr] = [AnalogIn(ads, ch) for ch in (0, 1, 2, 3)]
         else:
-            self._ads_dict[self.addr].gain = self.gain
+            self._ads_dict[addr].gain = gain
 
-    def _read_analog_channels(self, avg: int) -> List[float]:
-        self._ensure_adc()
+    def _read_analog_channels(self, addr, avg: int) -> List[float]:
         voltages: List[float] = []
         n = max(1, avg)
-        for ch in self._chans_dict[self.addr]:
+        for ch in self._chans_dict[addr]:
             vals = [ch.voltage for _ in range(n)]
             voltages.append(statistics.mean(vals))
         return voltages
 
-    def _read_digital_state(self, invert: bool) -> Optional[str]:
+    def _read_digital_state(self, do_pin, invert: bool) -> Optional[str]:
         if self._handle is None:
             return None
         try:
-            val = lgpio.gpio_read(self._handle, self.do_pin)
+            val = lgpio.gpio_read(self._handle, do_pin)
             if invert:
                 val = 1 - val
             return "WET" if val == 0 else "DRY"
@@ -125,6 +124,9 @@ class SensorArray:
         interval: float = DEFAULT_INTSEC,
         avg: int = DEFAULT_AVG,
         invert_do: bool = False,
+        addr: int = None,
+        gain: float = None,
+        do_pin: int = None,
     ) -> Dict[str, Any]:
         """Take one or more sensor snapshots."""
         if not self._i2c:
@@ -133,10 +135,14 @@ class SensorArray:
         readings: List[Dict[str, Any]] = []
 
         with self._lock:
-            self._ensure_adc()
+            req_addr = addr if addr is not None else self.addr
+            req_gain = gain if gain is not None else self.gain
+            req_do_pin = do_pin if do_pin is not None else self.do_pin
+            
+            self._ensure_adc(req_addr, req_gain)
             for i in range(1, samples + 1):
-                volts = self._read_analog_channels(avg)
-                do_state = self._read_digital_state(invert_do)
+                volts = self._read_analog_channels(req_addr, avg)
+                do_state = self._read_digital_state(req_do_pin, invert_do)
                 ts = datetime.now().astimezone().isoformat()
 
                 readings.append(
@@ -152,8 +158,8 @@ class SensorArray:
                     master_log.log_event(
                         "sensor_read",
                         source="SensorArray.snapshot",
-                        addr=self.addr,
-                        gain=self.gain,
+                        addr=req_addr,
+                        gain=req_gain,
                         avg=avg,
                         sample_index=i,
                         v0=volts[0],
@@ -170,8 +176,8 @@ class SensorArray:
                     time.sleep(interval)
 
         return {
-            "addr": self.addr,
-            "gain": self.gain,
+            "addr": req_addr,
+            "gain": req_gain,
             "readings": readings,
         }
 
@@ -217,14 +223,12 @@ def snapshot_sensors(
     
     _ensure_manager(use_digital)
     
-    # Allow overriding defaults for the snapshot call
-    manager.main_array.addr = addr
-    manager.main_array.gain = gain
-    manager.main_array.do_pin = do_pin
-    
     return manager.main_array.snapshot(
         samples=samples,
         interval=interval,
         avg=avg,
-        invert_do=invert_do
+        invert_do=invert_do,
+        addr=addr,
+        gain=gain,
+        do_pin=do_pin
     )

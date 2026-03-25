@@ -19,7 +19,7 @@ function App() {
         <PumpControl pumpName="food" colorBase="var(--accent-green)" hoverBase="#10b981" />
         <SISMonitor title="Main Grow Area SIS" />
         <SensorMonitor title="Tray 1 Sensors" addr={0x48} />
-        <SensorMonitor title="Tray 2 Sensors" addr={0x49} />
+        <SensorMonitor title="Tray 2 Sensors" addr={0x4B} />
         <ScaleMonitor />
         <AutomationRules />
       </main>

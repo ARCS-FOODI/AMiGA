@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from ...scale import manager
+from ... import scale_telemetry
 
 router = APIRouter(
     prefix="/scale",
@@ -14,6 +15,16 @@ def read_scale():
     """
     return {
         "weight": manager.get_weight(),
+        "status": "ok"
+    }
+
+@router.get("/bundles")
+def get_bundles():
+    """
+    Returns the history of scale data bundles (average weight per bundle).
+    """
+    return {
+        "history": scale_telemetry.get_recent_averages(),
         "status": "ok"
     }
 

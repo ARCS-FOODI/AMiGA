@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getScaleWeight, tareScale } from '../api';
+import { getScaleWeight, tareScale, getScaleBundles } from '../api';
 
 // Polling interval in ms — configurable between 500ms and 1000ms
 const POLL_INTERVAL_MS = 1000;
@@ -10,9 +10,10 @@ export default function ScaleMonitor() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [history, setHistory] = useState([]);
+    const [bundleHistory, setBundleHistory] = useState([]);
     const historyRef = useRef([]);
 
-    const pollScale = async () => {
+    const pollLiveScale = async () => {
         setLoading(true);
         setError(null);
         try {
@@ -20,7 +21,7 @@ export default function ScaleMonitor() {
             const w = data.weight;
             setWeight(w);
 
-            // Update history for sparkline
+            // Update history for live sparkline
             const updated = [...historyRef.current, w].slice(-HISTORY_LENGTH);
             historyRef.current = updated;
             setHistory(updated);
@@ -28,6 +29,18 @@ export default function ScaleMonitor() {
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const pollBundleHistory = async () => {
+        try {
+            const bundleData = await getScaleBundles();
+            if (bundleData && bundleData.history) {
+                const averages = bundleData.history.map(b => b.average);
+                setBundleHistory(averages);
+            }
+        } catch (err) {
+            console.error("Failed to fetch bundle history:", err);
         }
     };
 
@@ -39,7 +52,7 @@ export default function ScaleMonitor() {
             // Reset history after tare since the baseline changed
             historyRef.current = [];
             setHistory([]);
-            await pollScale();
+            await pollLiveScale();
         } catch (err) {
             setError(err.message);
         } finally {
@@ -47,10 +60,22 @@ export default function ScaleMonitor() {
         }
     };
 
+    const handleManualPoll = () => {
+        pollLiveScale();
+        pollBundleHistory();
+    };
+
     useEffect(() => {
-        pollScale();
-        const interval = setInterval(pollScale, POLL_INTERVAL_MS);
-        return () => clearInterval(interval);
+        pollLiveScale();
+        pollBundleHistory();
+        
+        const liveInterval = setInterval(pollLiveScale, POLL_INTERVAL_MS);
+        const bundleInterval = setInterval(pollBundleHistory, 20000);
+        
+        return () => {
+            clearInterval(liveInterval);
+            clearInterval(bundleInterval);
+        };
     }, []);
 
     // Format weight strictly to 3 decimal places
@@ -78,7 +103,7 @@ export default function ScaleMonitor() {
                         className={`status-indicator ${weight !== null && !error ? 'status-online' : 'status-neutral'}`}
                         style={{ backgroundColor: weight !== null && !error ? 'var(--accent-purple)' : '' }}
                     ></span>
-                    <button onClick={pollScale} disabled={loading} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                    <button onClick={handleManualPoll} disabled={loading} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                         {loading ? 'Polling...' : 'Poll Now'}
                     </button>
                 </div>
@@ -87,39 +112,73 @@ export default function ScaleMonitor() {
             {/* Error display */}
             {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {/* Weight readout */}
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
-                    <div style={{
-                        fontSize: '3.5rem',
-                        fontWeight: 'bold',
-                        fontFamily: 'monospace',
-                        color: weight !== null && weight < 0 ? 'var(--accent-red)' : 'var(--text-primary)',
-                        textShadow: '0 0 20px rgba(255,255,255,0.1)'
+            {/* Dual Column Layout */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
+                
+                {/* Left Column: Live Scale */}
+                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* Weight readout */}
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+                        <div style={{
+                            fontSize: '3.5rem',
+                            fontWeight: 'bold',
+                            fontFamily: 'monospace',
+                            color: weight !== null && weight < 0 ? 'var(--accent-red)' : 'var(--text-primary)',
+                            textShadow: '0 0 20px rgba(255,255,255,0.1)'
+                        }}>
+                            {formattedWeight} <span style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>g</span>
+                        </div>
+                    </div>
+
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '-0.5rem' }}>Live Graph</div>
+                    <Sparkline data={history} />
+
+                    <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '0.25rem 0' }} />
+
+                    {/* Tare section */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                        <div style={{ flex: 2, fontSize: '0.8rem', color: 'var(--text-secondary)', paddingBottom: '0.5rem' }}>
+                            Calibrate Zero Point
+                        </div>
+                        <button
+                            className="purple"
+                            onClick={handleTare}
+                            disabled={loading}
+                            style={{ flex: 1 }}
+                        >
+                            Tare Scale
+                        </button>
+                    </div>
+                </div>
+
+                {/* Right Column: Bundle Averages */}
+                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ 
+                        background: 'rgba(0,0,0,0.15)', 
+                        padding: '1rem', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--glass-border)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        gap: '1rem'
                     }}>
-                        {formattedWeight} <span style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>g</span>
+                        <div style={{ textAlign: 'center' }}>
+                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Telemetry Bundle Averages</h4>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Historical averages of recent 20-point bundles</div>
+                        </div>
+                        
+                        <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                           <Sparkline data={bundleHistory} />
+                        </div>
+                        
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
+                            {bundleHistory.length > 0 ? `Showing last ${bundleHistory.length} bundles` : 'Awaiting data...'}
+                        </div>
                     </div>
                 </div>
 
-                {/* Sparkline weight history chart */}
-                <Sparkline data={history} />
-
-                <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '0.25rem 0' }} />
-
-                {/* Tare section */}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                    <div style={{ flex: 2, fontSize: '0.8rem', color: 'var(--text-secondary)', paddingBottom: '0.5rem' }}>
-                        Calibrate Zero Point
-                    </div>
-                    <button
-                        className="purple"
-                        onClick={handleTare}
-                        disabled={loading}
-                        style={{ flex: 1 }}
-                    >
-                        Tare Scale
-                    </button>
-                </div>
             </div>
         </div>
     );

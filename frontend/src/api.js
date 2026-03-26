@@ -69,4 +69,5 @@ export const runControlCycle = (data) =>
     }).then(handleResponse);
 
 export const getScaleWeight = () => fetch(`${API_BASE}/scale/read`).then(handleResponse);
+export const getScaleBundles = () => fetch(`${API_BASE}/scale/bundles`).then(handleResponse);
 export const tareScale = () => fetch(`${API_BASE}/scale/tare`, { method: "POST" }).then(handleResponse);

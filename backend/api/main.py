@@ -9,6 +9,7 @@ from .. import sensors as hs_sensors
 from .. import light as hs_light
 from .. import scale as hs_scale
 from .. import grow_scheduler
+from .. import scale_telemetry
 from .. import config_store
 from ..settings import PUMP_PINS, DEFAULT_ADDR, DEFAULT_GAIN, DEFAULT_AVG, DEFAULT_THRESH, DEFAULT_HZ, DEFAULT_DIR, DEFAULT_VOTE_K, DEFAULT_IRR_SEC
 
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     hs_sensors.manager.startup(use_digital=True)
     hs_scale.manager.startup()
     grow_scheduler.start()
+    scale_telemetry.start()
     
     print("\n" + "="*50)
     print("  AMiGA API backend is running.")
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        scale_telemetry.stop()
         grow_scheduler.stop()
         hs_pumps.manager.shutdown()
         hs_light.manager.shutdown()

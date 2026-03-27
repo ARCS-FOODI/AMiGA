@@ -3,11 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import pumps, sensors, light, control, scale, sis
+from .routers import pumps, sensors, light, control, scale, sis, scd41
 from .. import pumps as hs_pumps
 from .. import sensors as hs_sensors
 from .. import light as hs_light
 from .. import scale as hs_scale
+from .. import scd41 as hs_scd41
 from .. import grow_scheduler
 from .. import scale_telemetry
 from .. import config_store
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     hs_light.manager.startup()
     hs_sensors.manager.startup(use_digital=True)
     hs_scale.manager.startup()
+    hs_scd41.manager.startup()
     grow_scheduler.start()
     scale_telemetry.start()
     
@@ -40,6 +42,7 @@ async def lifespan(app: FastAPI):
         hs_light.manager.shutdown()
         hs_sensors.manager.shutdown()
         hs_scale.manager.shutdown()
+        hs_scd41.manager.shutdown()
 
 
 app = FastAPI(title="AMiGA API", lifespan=lifespan)
@@ -60,6 +63,7 @@ app.include_router(light.router)
 app.include_router(control.router)
 app.include_router(scale.router)
 app.include_router(sis.router)
+app.include_router(scd41.router)
 
 
 @app.get("/config", tags=["system"])

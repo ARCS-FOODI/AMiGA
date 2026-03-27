@@ -61,6 +61,8 @@ export const snapshotSIS = (options = {}) => {
     }).then(handleResponse);
 };
 
+export const snapshotSCD41 = () => fetch(`${API_BASE}/scd41/read`).then(handleResponse);
+
 export const runControlCycle = (data) =>
     fetch(`${API_BASE}/control/cycle-once`, {
         method: "POST",

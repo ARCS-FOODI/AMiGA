@@ -4,6 +4,7 @@ adafruit-circuitpython-busdevice==5.2.15
 adafruit-circuitpython-connectionmanager==3.1.6
 adafruit-circuitpython-requests==4.1.15
 adafruit-circuitpython-scd4x
+adafruit-circuitpython-tsl2561
 adafruit-circuitpython-typing==1.12.3
 Adafruit-PlatformDetect==3.88.0
 Adafruit-PureIO==1.1.11

@@ -40,7 +40,7 @@ else:
             self._lux = int(max(0, min(2000, self._lux + random.uniform(-5, 5))))
 
     # Mocking hardware dependencies for Windows/macOS development
-    board = type("board", (), {"SCL": 1, "SDA": 2})
+    board = type("board", (), {"I2C": lambda *a, **k: None})
     busio = type("busio", (), {"I2C": lambda *a, **k: None})
     adafruit_tsl2561 = type("adafruit_tsl2561", (), {"TSL2561": MockTSL2561})
 
@@ -59,7 +59,7 @@ class TSL2561Sensor:
         with self._lock:
             if not self._i2c:
                 try:
-                    self._i2c = busio.I2C(board.SCL, board.SDA)
+                    self._i2c = board.I2C()
                     self._sensor = adafruit_tsl2561.TSL2561(self._i2c)
                     # Optional: enable features or set gain/integration time
                     # self._sensor.enabled = True

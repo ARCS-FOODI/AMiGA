@@ -45,7 +45,7 @@ else:
         def gpio_claim_input(self, handle, pin): pass
         def gpio_read(self, handle, pin): return 1 # 1 = Dry
 
-    board = type("board", (), {"SCL": 1, "SDA": 2})
+    board = type("board", (), {"SCL": 1, "SDA": 2, "I2C": lambda *a, **k: None})
     busio = type("busio", (), {"I2C": MockI2C})
     ADS = type("ADS", (), {"ADS1115": MockADS})
     AnalogIn = MockAnalogIn
@@ -81,7 +81,7 @@ class SensorArray:
         with self._lock:
             # Init I2C ADC
             if not self._i2c:
-                self._i2c = busio.I2C(board.SCL, board.SDA)
+                self._i2c = board.I2C()
 
             # Init DO pin if requested
             if use_digital and handle is not None:
@@ -90,7 +90,7 @@ class SensorArray:
 
     def _ensure_adc(self, addr, gain):
         if not self._i2c:
-            self._i2c = busio.I2C(board.SCL, board.SDA)
+            self._i2c = board.I2C()
         if addr not in self._ads_dict:
             ads = ADS.ADS1115(self._i2c, address=addr)
             ads.gain = gain

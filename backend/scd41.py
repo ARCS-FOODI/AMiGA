@@ -61,6 +61,14 @@ class SCD41Sensor:
                 try:
                     self._i2c = board.I2C()
                     self._sensor = adafruit_scd4x.SCD4X(self._i2c)
+                    
+                    # Force stop any lingering measurements from previous runs
+                    try:
+                        self._sensor.stop_periodic_measurement()
+                        time.sleep(1)
+                    except Exception:
+                        pass
+                        
                     self._sensor.start_periodic_measurement()
                 except Exception as e:
                     print(f"[SCD41] Hardware init failed: {e}")

@@ -21,34 +21,51 @@ def list_sessions(base_dir="recordings"):
 
 def create_timelapse(image_folder, pattern, output_name, fps=30):
     """
-    Stitches images matching a pattern into an MKV video.
+    Stitches images into an MKV. If pattern is 'heat' and no files exist, 
+    it generates the heatmap from 'raw' files on-the-fly.
     """
+    is_heatmap_request = "heat" in pattern
     images = sorted(glob.glob(os.path.join(image_folder, pattern)))
     
+    # Virtual Heatmap Logic: If we want a heatmap video but only have RAW images
+    virtual_mode = False
+    if is_heatmap_request and not images:
+        print(f"   [INFO] No heat JPEGs found. Switching to Virtual Heatmap mode...")
+        images = sorted(glob.glob(os.path.join(image_folder, "*_raw.jpg")))
+        virtual_mode = True
+
     if not images:
         print(f"   [SKIP] No images found matching: {pattern}")
         return
 
-    # Initialize VideoWriter using dimensions from the first image
+    # Initialize VideoWriter
     first_frame = cv2.imread(images[0])
     if first_frame is None:
         return
         
     height, width, _ = first_frame.shape
     
-    # Output file will be placed in the parent 'recordings' folder
     parent_dir = os.path.dirname(image_folder)
     output_path = os.path.join(parent_dir, output_name)
     
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     video = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-    print(f"   [PROCESSING] Building {output_name} ({len(images)} frames)...")
+    mode_str = "VIRTUAL HEATMAP" if virtual_mode else "STANDARD"
+    print(f"   [PROCESSING] Building {output_name} ({len(images)} frames) [{mode_str}]...")
     
     for i, image_path in enumerate(images):
         frame = cv2.imread(image_path)
-        if frame is not None:
-            video.write(frame)
+        if frame is None:
+            continue
+            
+        if virtual_mode:
+            # Apply the Moisture Heatmap filter in-memory
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            inverted = cv2.bitwise_not(gray)
+            frame = cv2.applyColorMap(inverted, cv2.COLORMAP_JET)
+
+        video.write(frame)
         
         if (i + 1) % 100 == 0:
             print(f"      - {i + 1} frames processed...")
@@ -65,7 +82,7 @@ if __name__ == "__main__":
     
     if not sessions:
         print("\n[!] No sessions found in 'recordings/'.")
-        print("    Run moisture_tracker.py first to capture data.")
+        print("    Run moisture_recorder.py first to capture data.")
         sys.exit(0)
 
     print("\n--- Available Sessions (Newest First) ---")
@@ -90,12 +107,13 @@ if __name__ == "__main__":
         
         print(f"\n--- GENERATING TIMELAPSES FOR: {session_name} ---")
 
-        # Generate separate videos for Raw IR and Heatmap
-        # 30 FPS means 1 second of video = 30 seconds of real-time monitoring
+        # Generate Raw Timelapse
         create_timelapse(selected_path, "*_raw.jpg", f"{session_name}_raw_timelapse.mkv", fps=30)
+        
+        # Generate Heatmap Timelapse (Targeting *_heat.jpg first, falls back to *_raw.jpg)
         create_timelapse(selected_path, "*_heat.jpg", f"{session_name}_heat_timelapse.mkv", fps=30)
         
-        print("\n[COMPLETE] Both time-lapse videos are ready in the 'recordings/' folder.")
+        print("\n[COMPLETE] Both videos are ready in the 'recordings/' folder.")
         
     except ValueError:
         print("[!] Input must be a number.")
@@ -103,4 +121,5 @@ if __name__ == "__main__":
         print("\nGeneration cancelled.")
     except Exception as e:
         print(f"\n[ERROR] An unexpected issue occurred: {e}")
+
 

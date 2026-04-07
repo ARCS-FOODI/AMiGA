@@ -11,6 +11,7 @@ from ..models import (
 from ...pumps import manager as pump_manager, StepperPump
 from ...settings import PUMP_PINS
 from ... import config_store
+from ... import pump_telemetry
 
 router = APIRouter(prefix="/pump", tags=["pumps"])
 
@@ -29,6 +30,7 @@ def get_pump_from_request(req_obj) -> StepperPump:
 def api_run_pump_seconds(req: PumpSecondsRequest):
     pump = get_pump_from_request(req)
     try:
+        pump_telemetry.log_action(req.pump, "Manual Prime", {"direction": req.direction, "seconds": req.seconds, "hz": req.hz})
         return pump.run_for_seconds(
             seconds=req.seconds,
             hz=req.hz,
@@ -43,6 +45,8 @@ def api_run_pumps_seconds(req: PumpMultiSecondsRequest):
         if p not in PUMP_PINS:
             raise HTTPException(status_code=400, detail=f"Unknown pump '{p}'")
     try:
+        for p in req.pumps:
+            pump_telemetry.log_action(p, "Manual Prime (Multi)", {"direction": req.direction, "seconds": req.seconds, "hz": req.hz})
         return pump_manager.run_multi_seconds(
             pump_names=req.pumps,
             seconds=req.seconds,
@@ -67,6 +71,7 @@ def api_calibrate_pump(req: PumpCalibrateRequest):
 def api_run_pump_ml(req: PumpMlRequest):
     pump = get_pump_from_request(req)
     try:
+        pump_telemetry.log_action(req.pump, "Dispense Volume", {"direction": req.direction, "amount_ml": req.ml, "hz": req.hz})
         return pump.dispense_ml(
             ml=req.ml,
             hz=req.hz,

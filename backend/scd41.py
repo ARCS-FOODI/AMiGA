@@ -36,7 +36,7 @@ else:
             self.relative_humidity = max(20.0, min(80.0, self.relative_humidity + random.uniform(-1.0, 1.0)))
 
     # Mocking hardware dependencies for Windows/macOS development
-    board = type("board", (), {"SCL": 1, "SDA": 2})
+    board = type("board", (), {"I2C": lambda *a, **k: None})
     busio = type("busio", (), {"I2C": lambda *a, **k: None})
     adafruit_scd4x = type("adafruit_scd4x", (), {"SCD4X": MockSCD4X})
 
@@ -49,14 +49,25 @@ class SCD41Sensor:
         self._i2c = None
         self._sensor = None
         self._lock = threading.Lock()
+        self._last_co2 = None
+        self._last_temp = None
+        self._last_rh = None
 
     def startup(self) -> None:
         """Initialize the I2C connection and start the sensor's periodic measurement."""
         with self._lock:
             if not self._i2c:
                 try:
-                    self._i2c = busio.I2C(board.SCL, board.SDA)
+                    self._i2c = board.I2C()
                     self._sensor = adafruit_scd4x.SCD4X(self._i2c)
+                    
+                    # Force stop any lingering measurements from previous runs
+                    try:
+                        self._sensor.stop_periodic_measurement()
+                        time.sleep(1)
+                    except Exception:
+                        pass
+                        
                     self._sensor.start_periodic_measurement()
                 except Exception as e:
                     print(f"[SCD41] Hardware init failed: {e}")
@@ -104,14 +115,13 @@ class SCD41Sensor:
         try:
             with self._lock:
                 if self._sensor.data_ready:
-                    co2 = self._sensor.CO2
-                    temp = self._sensor.temperature
-                    rh = self._sensor.relative_humidity
-                else:
-                    # Return whatever was last buffered by the circuitpython library
-                    co2 = self._sensor.CO2
-                    temp = self._sensor.temperature
-                    rh = self._sensor.relative_humidity
+                    self._last_co2 = self._sensor.CO2
+                    self._last_temp = self._sensor.temperature
+                    self._last_rh = self._sensor.relative_humidity
+
+                co2 = self._last_co2
+                temp = self._last_temp
+                rh = self._last_rh
 
             data = {
                 "co2": co2,

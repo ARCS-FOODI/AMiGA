@@ -4,6 +4,8 @@ from __future__ import annotations
 import time
 import statistics
 import threading
+import csv
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -16,7 +18,21 @@ from .settings import (
     CHIP,
     SIMULATE_GPIO,
 )
-from . import master_log
+
+LOG_FILE = Path(__file__).resolve().parents[1] / "data" / "sensors.csv"
+
+def _log_sensor_data_wide(device_name: str, ts: str, v0: float, v1: float, v2: float, v3: float, do_state: Optional[str]) -> None:
+    try:
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        file_exists = LOG_FILE.exists()
+        with LOG_FILE.open("a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["timestamp", "device_name", "v0", "v1", "v2", "v3", "do_state"])
+            writer.writerow([ts, device_name, round(v0, 4), round(v1, 4), round(v2, 4), round(v3, 4), do_state])
+    except Exception as e:
+        print(f"[LOG] Failed to write to {LOG_FILE.name}: {e}")
+
 
 if not SIMULATE_GPIO:
     import board
@@ -154,23 +170,15 @@ class SensorArray:
                     }
                 )
 
-                try:
-                    master_log.log_event(
-                        "sensor_read",
-                        source="SensorArray.snapshot",
-                        addr=req_addr,
-                        gain=req_gain,
-                        avg=avg,
-                        sample_index=i,
-                        v0=volts[0],
-                        v1=volts[1],
-                        v2=volts[2],
-                        v3=volts[3],
-                        do_state=do_state,
-                        timestamp=ts,
-                    )
-                except Exception as e:
-                    print(f"[LOG] Failed to log sensor_read: {e}")
+                _log_sensor_data_wide(
+                    device_name="ads1115_array",
+                    ts=ts,
+                    v0=volts[0],
+                    v1=volts[1],
+                    v2=volts[2],
+                    v3=volts[3],
+                    do_state=do_state
+                )
 
                 if i < samples:
                     time.sleep(interval)

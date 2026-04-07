@@ -6,7 +6,7 @@ import threading
 from typing import Dict, Any, List
 
 from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE_GPIO
-from . import config_store, master_log, scale
+from . import config_store, scale
 
 if not SIMULATE_GPIO:
     import lgpio
@@ -120,18 +120,7 @@ class StepperPump:
             manager.request_enable_driver(False)
             self._lock.release()
 
-        # Log to master.csv
-        try:
-            master_log.log_event(
-                "pump_run_seconds",
-                source="StepperPump.run_for_seconds",
-                pump=self.name,
-                seconds=seconds,
-                hz=hz,
-                direction=direction,
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log pump_run_seconds to master.csv: {e}")
+
 
         return {
             "pump": self.name,
@@ -173,19 +162,7 @@ class StepperPump:
         except Exception as e:
             print(f"[SCALE] Failed to add water weight: {e}")
         
-        try:
-            master_log.log_event(
-                "pump_run_ml",
-                source="StepperPump.dispense_ml",
-                pump=self.name,
-                ml=ml,
-                seconds=seconds,
-                hz=hz,
-                direction=direction,
-                note=f"rate_ml_per_sec={self.calibration_rate}",
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log pump_run_ml to master.csv: {e}")
+
             
         return result
 
@@ -193,16 +170,7 @@ class StepperPump:
         """Run pump for fixed time for manual volume measurement."""
         self.run_for_seconds(run_seconds, hz, DEFAULT_DIR)
         
-        try:
-            master_log.log_event(
-                "pump_calibration_run",
-                source="StepperPump.calibrate",
-                pump=self.name,
-                seconds=run_seconds,
-                hz=hz,
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log pump_calibration_run to master.csv: {e}")
+
 
         return {
             "pump": self.name,
@@ -328,17 +296,7 @@ class PumpManager:
             "status": "ok",
         }
 
-        try:
-            master_log.log_event(
-                "pump_run_multi_seconds",
-                source="PumpManager.run_multi_seconds",
-                pumps=",".join(pump_names),
-                seconds=seconds,
-                hz=hz,
-                direction=direction,
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log pump_run_multi_seconds to master.csv: {e}")
+
 
         return result
 

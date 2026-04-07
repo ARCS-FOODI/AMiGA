@@ -12,4 +12,4 @@
 
 ### System Usage
 - **Global Orchestration**: The Pi runs the `amiga-grow-scheduler` thread, which coordinates lighting and feeding.
-- **Event Logging**: All hardware events (motor steps, sensor reads, relay toggles) are centralized into `backend/data/master.csv` by the `master_log.py` module for system-wide auditing.
+- **Event Logging**: All hardware events (motor steps, sensor reads, relay toggles) use device-specific CSV telemetry logging for system-wide auditing.

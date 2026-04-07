@@ -244,3 +244,4 @@ kratky/sinfo
 kratky/sensor_log.csv
 data/master.csv
 backend/data/scale_state.json
+data/sensors.csv

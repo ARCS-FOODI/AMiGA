@@ -7,7 +7,6 @@ from datetime import datetime, time as dtime
 from typing import Dict, Any
 
 from .settings import CHIP, LIGHT_PIN, SIMULATE_GPIO
-from . import master_log
 
 if not SIMULATE_GPIO:
     import lgpio
@@ -67,15 +66,6 @@ class GrowLight:
             self.is_on = on
             if SIMULATE_GPIO: print(f"[MOCK] GrowLight toggled: {'ON' if on else 'OFF'}")
 
-        try:
-            master_log.log_event(
-                "light_state",
-                source=log_source,
-                light_on=on,
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log light_state to master.csv: {e}")
-
         return {"light_pin": self.pin, "on": self.is_on}
 
     def toggle(self) -> Dict[str, Any]:
@@ -109,15 +99,6 @@ class GrowLight:
         self.day_start = self._parse_hhmm(day_start)
         self.day_end = self._parse_hhmm(day_end)
 
-        try:
-            master_log.log_event(
-                "light_config_set",
-                source="GrowLight.set_config",
-                note=f"mode={mode}, day_start={day_start}, day_end={day_end}",
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log light_config_set: {e}")
-
         return self.get_config()
 
     def get_config(self) -> Dict[str, Any]:
@@ -148,16 +129,6 @@ class GrowLight:
         within = self._is_within_window(now)
         # Only update hardware if state actually needs to change, or force it
         result = self.set_state(within, log_source="GrowLight.apply_daynight_now")
-
-        try:
-            master_log.log_event(
-                "light_daynight_apply",
-                source="GrowLight.apply_daynight_now",
-                light_on=result.get("on"),
-                note=f"within_window={within}",
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log light_daynight_apply: {e}")
 
         return {
             "mode": self.mode,

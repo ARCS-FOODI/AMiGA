@@ -12,6 +12,7 @@ from .. import scd41 as hs_scd41
 from .. import tsl2561 as hs_tsl2561
 from .. import grow_scheduler
 from .. import scale_telemetry
+from .. import sis_telemetry
 from .. import config_store
 from ..settings import PUMP_PINS, DEFAULT_ADDR, DEFAULT_GAIN, DEFAULT_AVG, DEFAULT_THRESH, DEFAULT_HZ, DEFAULT_DIR, DEFAULT_VOTE_K, DEFAULT_IRR_SEC
 
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
     hs_tsl2561.manager.startup()
     grow_scheduler.start()
     scale_telemetry.start()
+    sis_telemetry.start()
     
     print("\n" + "="*50)
     print("  AMiGA API backend is running.")
@@ -38,6 +40,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        sis_telemetry.stop()
         scale_telemetry.stop()
         grow_scheduler.stop()
         hs_pumps.manager.shutdown()

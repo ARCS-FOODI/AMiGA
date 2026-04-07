@@ -4,9 +4,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
-
-from . import master_log  # log calibration changes to master.csv
-
 # Project root = two levels up from this file (adjust if needed)
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONFIG_DIR = BASE_DIR / "config"
@@ -58,15 +55,5 @@ def set_pump_calibration(pump: str, ml_per_sec: float) -> Dict[str, Any]:
     pumps[pump] = {"ml_per_sec": float(ml_per_sec)}
     save_calibration(data)
 
-    # Log calibration change to master.csv
-    try:
-        master_log.log_event(
-            "pump_calibration_set",
-            source="config_store.set_pump_calibration",
-            pump=pump,
-            note=f"ml_per_sec={ml_per_sec}",
-        )
-    except Exception as e:
-        print(f"[LOG] Failed to log calibration to master.csv: {e}")
 
     return data

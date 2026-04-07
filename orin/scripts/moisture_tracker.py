@@ -2,40 +2,93 @@ import cv2
 import numpy as np
 import os
 import time
+import threading
 from datetime import datetime
 
-# --- SETUP RECORDING & DIRECTORIES ---
-# Ensure we have a base recordings folder
+class CameraStream:
+    """
+    Optimized Camera Handler for NVIDIA Jetson Orin.
+    Uses GStreamer and hardware-accelerated decoding (NVDEC) via nvv4l2decoder.
+    """
+    def __init__(self, device_id=0, width=1920, height=1080, fps=30):
+        self.device_id = device_id
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.frame = None
+        self.stopped = False
+        
+        # --- JETSON ORIN OPTIMIZED PIPELINE ---
+        # 1. v4l2src: Standard USB camera source
+        # 2. image/jpeg: MJPEG format (best for 1080p30 over USB)
+        # 3. nvv4l2decoder: NVIDIA Hardware Decoder Engine
+        # 4. nvvidconv: Hardware-accelerated color conversion
+        # 5. appsink: Hand-off frames to OpenCV
+        self.pipeline = (
+            f"v4l2src device=/dev/video{self.device_id} ! "
+            f"image/jpeg, width={self.width}, height={self.height}, framerate={self.fps}/1 ! "
+            "nvv4l2decoder mjpeg=1 ! "
+            "nvvidconv ! "
+            "video/x-raw, format=BGRx ! "
+            "videoconvert ! "
+            "video/x-raw, format=BGR ! "
+            "appsink drop=1"
+        )
+        
+        # Try GStreamer pipeline first
+        self.cap = cv2.VideoCapture(self.pipeline, cv2.CAP_GSTREAMER)
+        
+        if not self.cap.isOpened():
+            print(f"[WARNING] GStreamer failed. Falling back to V4L2 (CPU Decoding).")
+            self.cap = cv2.VideoCapture(self.device_id)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+            self.cap.set(cv2.CAP_PROP_FPS, self.fps)
+        else:
+            print(f"[GSTREAMER SUCCESS] HW-Accelerated Pipeline Active.")
+
+    def start(self):
+        # Daemon=True ensures thread closes when main script exits
+        threading.Thread(target=self.update, args=(), daemon=True).start()
+        return self
+
+    def update(self):
+        while not self.stopped:
+            ret, frame = self.cap.read()
+            if not ret:
+                self.stopped = True
+                continue
+            self.frame = frame
+
+    def read(self):
+        return self.frame
+
+    def stop(self):
+        self.stopped = True
+        time.sleep(0.5) # Give thread a moment to loop and see 'stopped'
+        self.cap.release()
+
+# --- SETUP DIRECTORIES ---
 output_root = "recordings"
 if not os.path.exists(output_root):
     os.makedirs(output_root)
 
-# Create a unique session folder for this run's snapshots
 session_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 session_dir = os.path.join(output_root, f"session_{session_time}")
 os.makedirs(session_dir)
 
-# 1. Access the USB camera feed
-cap = cv2.VideoCapture(0)
+# Initialize Optimized Stream
+cam = CameraStream().start()
 
-if not cap.isOpened():
-    print("Error: Could not open video feed.")
-    exit()
+# Wait for the first frame to populate
+while cam.read() is None:
+    print("Waiting for camera initialization...")
+    time.sleep(0.5)
 
-# Get frame dimensions for VideoWriter
-frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-# Define the codec and create VideoWriter object
-# 'XVID' codec is widely compatible for .mkv containers
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-video_filename = os.path.join(output_root, f"moisture_{session_time}.mkv")
-out = cv2.VideoWriter(video_filename, fourcc, 20.0, (frame_width, frame_height))
-
-print(f"--- MOISTURE TRACKER ACTIVE ---")
-print(f"Recording Video: {video_filename}")
-print(f"Saving Snapshots to: {session_dir}")
-print("Press 'q' to stop recording and exit.")
+print(f"\n--- MOISTURE TRACKER ACTIVE ---")
+print(f"Session: {session_dir}")
+print(f"Target: 1080p @ 30fps")
+print("Press 'q' in the window to stop tracking.\n")
 
 # --- WINDOW SETUP ---
 cv2.namedWindow('Original Camera Feed', cv2.WINDOW_NORMAL)
@@ -43,47 +96,54 @@ cv2.namedWindow('AI Moisture Heatmap', cv2.WINDOW_NORMAL)
 cv2.resizeWindow('Original Camera Feed', 640, 480)
 cv2.resizeWindow('AI Moisture Heatmap', 640, 480)
 
-# Tracker for snapshot timing
 last_snapshot_time = time.time()
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to grab frame.")
-        break
+try:
+    while True:
+        # Pull the latest frame from the background thread
+        frame = cam.read()
+        if frame is None:
+            continue
 
-    # 2. Convert to Grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # 2. Convert to Grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # 3. Process the Moisture Concept:
-    # Invert to turn DARK areas (wet) into BRIGHT values (signal)
-    inverted_gray = cv2.bitwise_not(gray)
-    
-    # Apply JET heatmap (Blue=Dry, Red=Wet)
-    moisture_map = cv2.applyColorMap(inverted_gray, cv2.COLORMAP_JET)
+        # 3. Process the Moisture Concept:
+        # Invert -> Jet Heatmap
+        inverted_gray = cv2.bitwise_not(gray)
+        moisture_map = cv2.applyColorMap(inverted_gray, cv2.COLORMAP_JET)
 
-    # --- RECORDING & SNAPSHOTS ---
-    # Write the heatmap frame to the .mkv video file
-    out.write(moisture_map)
+        # --- DUAL SNAPSHOT LOGIC ---
+        current_time = time.time()
+        if current_time - last_snapshot_time >= 1.0:
+            timestamp = datetime.now().strftime("%H%M%S")
+            
+            # Save Raw & Heatmap
+            raw_path = os.path.join(session_dir, f"moisture_{timestamp}_raw.jpg")
+            heat_path = os.path.join(session_dir, f"moisture_{timestamp}_heat.jpg")
+            
+            cv2.imwrite(raw_path, frame)
+            cv2.imwrite(heat_path, moisture_map)
+            
+            last_snapshot_time = current_time
 
-    # Interval Snapshot Logic (every 1 second)
-    current_time = time.time()
-    if current_time - last_snapshot_time >= 1.0:
-        timestamp = datetime.now().strftime("%H%M%S")
-        snapshot_path = os.path.join(session_dir, f"moisture_{timestamp}.jpg")
-        cv2.imwrite(snapshot_path, moisture_map)
-        last_snapshot_time = current_time
+        # 4. Display both feeds
+        cv2.imshow('Original Camera Feed', frame)
+        cv2.imshow('AI Moisture Heatmap', moisture_map)
 
-    # 4. Display both feeds
-    cv2.imshow('Original Camera Feed', frame)
-    cv2.imshow('AI Moisture Heatmap', moisture_map)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+except KeyboardInterrupt:
+    print("\nTracking interrupted by user.")
 
 # Clean up
-cap.release()
-out.release()
+cam.stop()
 cv2.destroyAllWindows()
-print(f"--- RECORDING FINISHED ---")
-print(f"Total snapshots saved in: {session_dir}")
+
+print(f"\n--- SESSION FINISHED ---")
+print(f"Files saved in: {session_dir}")
+print("Run 'python3 timelapse_processor.py' to generate videos.")
+
+
+

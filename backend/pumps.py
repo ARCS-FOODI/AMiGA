@@ -5,6 +5,7 @@ import time
 import threading
 from typing import Dict, Any, List
 
+from .settings import PUMP_PINS, CHIP, DEFAULT_HZ, DEFAULT_DIR, SIMULATE_GPIO
 from . import config_store, scale
 
 if not SIMULATE_GPIO:

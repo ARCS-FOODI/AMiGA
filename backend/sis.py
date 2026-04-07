@@ -3,7 +3,6 @@ import time
 import random
 from typing import Dict, Any
 from .settings import DEFAULT_SIS_PORT, DEFAULT_SIS_SLAVE_ID, SIMULATE_GPIO
-from . import master_log
 
 try:
     if not SIMULATE_GPIO:
@@ -67,17 +66,6 @@ class SoilIntegratedSensor:
                 "timestamp": ts,
                 "simulated": False
             }
-
-            try:
-                master_log.log_event(
-                    "sis_read",
-                    source="SIS.read_data",
-                    port=self.port,
-                    slave_id=self.slave_id,
-                    **data
-                )
-            except Exception as e:
-                print(f"[LOG] Failed to log sis_read: {e}")
 
             return data
 

@@ -18,7 +18,7 @@ from .settings import (
     DEFAULT_COOLDOWN_S,
     DEFAULT_THRESH,  
 )
-from . import sensors, pumps, master_log
+from . import sensors, pumps
 
 # Paths for legacy logging (keeping for backward compatibility)
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,25 +144,7 @@ class IrrigationController:
         except Exception as e:
             print(f"[LOG] Failed to log control cycle to moisture_cycles.csv: {e}")
 
-        try:
-            master_log.log_event(
-                "control_cycle",
-                source="IrrigationController.evaluate_cycle",
-                pump=pump_name,
-                target_threshold_v=target_threshold,
-                vote_k=vote_k,
-                hz=hz,
-                irrigate_seconds=irrigate_seconds,
-                triggered=triggered,
-                irrigated=irrigated,
-                under_threshold_count=over,
-                v0=before_volts[0],
-                v1=before_volts[1],
-                v2=before_volts[2],
-                v3=before_volts[3],
-            )
-        except Exception as e:
-            print(f"[LOG] Failed to log control_cycle to master.csv: {e}")
+
 
         return result
 

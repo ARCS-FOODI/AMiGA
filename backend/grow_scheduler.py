@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from zoneinfo import ZoneInfo
-
-from . import light, pumps, master_log
+from . import light, pumps
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
@@ -110,11 +109,6 @@ def _ensure_daynight_enabled() -> None:
     if cfg.get("mode") != "daynight":
         # IMPORTANT: light.set_light_config(mode, day_start, day_end)
         light.manager.main_light.set_config("daynight", LIGHT_ON_START, LIGHT_ON_END)
-        master_log.log_event(
-            "scheduler_light_daynight_enabled",
-            source="grow_scheduler._ensure_daynight_enabled",
-            note=f"start={LIGHT_ON_START} end={LIGHT_ON_END}",
-        )
     
     state["daynight_started"] = True
     _set_state(state)
@@ -133,13 +127,6 @@ def _food_due(now: datetime, last_food_date: str) -> bool:
 
 def _run_food_dose() -> None:
     result = pumps.manager.get_pump(FOOD_PUMP_NAME).dispense_ml(ml=FOOD_ML_PER_DAY)
-    master_log.log_event(
-        "scheduler_food_dose",
-        source="grow_scheduler._run_food_dose",
-        pump=FOOD_PUMP_NAME,
-        ml=FOOD_ML_PER_DAY,
-        note=f"scheduled_at={FOOD_DOSE_TIME} result={result.get('status','')}",
-    )
 
 
 def tick() -> None:
@@ -170,18 +157,8 @@ def tick() -> None:
 
     if _food_due(now, last_food_date):
         try:
-            _run_food_dose()
-            state["last_food_date"] = now.date().isoformat()
-            state["last_food_at"] = now.isoformat()
             _set_state(state)
         except Exception as e:
-            master_log.log_event(
-                "scheduler_food_dose_failed",
-                source="grow_scheduler.tick",
-                pump=FOOD_PUMP_NAME,
-                ml=FOOD_ML_PER_DAY,
-                note=str(e),
-            )
             print(f"[SCHED] food dose failed: {e}")
 
 

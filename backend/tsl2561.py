@@ -8,7 +8,6 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from .settings import SIMULATE_GPIO
-from . import master_log
 
 if not SIMULATE_GPIO:
     import board
@@ -120,16 +119,6 @@ class TSL2561Sensor:
                 "timestamp": ts,
                 "simulated": False
             }
-
-            try:
-                master_log.log_event(
-                    "tsl2561_read",
-                    source="TSL2561Sensor.read_data",
-                    **data
-                )
-            except Exception as e:
-                print(f"[LOG] Failed to log tsl2561_read: {e}")
-
             return data
 
         except Exception as e:

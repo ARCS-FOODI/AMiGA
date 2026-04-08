@@ -2,7 +2,7 @@
 
 AMiGA (Automated Modular Irrigation & Growth Assistant) is a research platform for Controlled Environment Agriculture (CEA). It integrates real-time environmental sensing with automated resource management (water, lighting, nutrients).
 
-- **Platform:** Raspberry Pi / PC (Simulation)
+- **Platform:** Raspberry Pi / Jetson Orin / PC (Simulation)
 - **Languages:** Python 3.10+, JavaScript (ES6+)
 - **Frameworks:** FastAPI, React (Vite)
 - **Core Controller:** [[main_controller]]
@@ -10,39 +10,32 @@ AMiGA (Automated Modular Irrigation & Growth Assistant) is a research platform f
 ## Software Architecture
 
 ### Backend (Python)
+The backend is a highly modular, high-performance **FastAPI** application serving as the hardware and telemetry gateway.
+It is organized into specific directories for its core functions (`api/` for endpoints, `data/` for persisted local state files).
 
-The backend is a high-performance **FastAPI** application that serves as the hardware gateway. It handles:
+- **Hardware Abstraction**: Device-specific driver classes for pumps, lights, and sensors (scale, SIS, SCD41, TSL2561).
+- **Background Tasks**: The `grow_scheduler` coordinates daily feeding and light cycles, alongside diagnostic scripts like `pump_diagnostic.py`.
+- **Telemetry Processing**: Dedicated telemetry modules (`scale_telemetry.py`, `sis_telemetry.py`) funnel sub-sensor data asynchronously into organized databases or CSV stores.
 
-- **Hardware Abstraction**: Unified classes for [[pumps]], [[sensors]], and [[sis]] (Soil Integrated Sensor).
-- **Background Tasks**: The `grow_scheduler` coordinates daily feeding and light cycles.
-- **Telemetry**: Real-time logging of [[scale]] (weight) and SIS data to CSV for later analysis.
+### Edge Computing & Integrations
+AMiGA expands beyond a single controller via external edge devices for extended data extraction:
+- **Jetson Orin Vision**: High-performance hardware-accelerated image pipeline handling IR moisture heatmaps and timelapses.
+- **Pi4 Telemetry Scraper**: Dedicated node to interactively OCR and scrape data from closed-ecosystem applications (e.g., Vivosun Android App).
 
 ### Frontend (React)
-
 A responsive web dashboard built with **Vite** and **Tailwind CSS**. It provides:
-
 - **Manual Overrides**: Instant control toggle for pumps and lights.
 - **Rule Configuration**: User-defined moisture thresholds for automated irrigation.
 - **Data Visualization**: Live graphing of soil health and system metrics.
 
 ## Hardware Composition
-
-The AMiGA physical stack is modular and extensible:
-
+The AMiGA physical stack is modular:
 - **Irrigation**: Peristaltic [[pumps]] driven by TMC2209 stepper drivers.
 - **Lighting**: High-intensity grow [[lights]] managed via SSR relays.
-- **Soil Intelligence**: [[sensors]] (Analog Moisture) and [[sis]] (7-in-1 NPK/pH/EC).
-- **Atmospheric Monitoring**: SCD41 CO2/Temp/Humidity sensing.
-- **Precision Metrics**: Integrated [[scale]] for nutrient and harvest weight tracking.
-
-## Functional API & Usage
-
-### API Endpoints (`/config`)
-
-- `GET /config`: Global system configuration parameters.
-- `POST /config/calibration`: Update ml/s rates for pumps or gain values for sensors.
+- **Atmospheric Sensors**: I2C environmental tracking using SCD41 (CO2/Temp/Hum) and TSL2561 (Luminosity).
+- **Soil Intelligence**: [[sensors]] (Analog Moisture Array) and [[sis]] (7-in-1 Modbus NPK/pH/EC).
+- **Precision Metrics**: Integrated [[scale]] for harvest weight tracking.
 
 ## System Usage
-
-- **Precision Automation**: The system uses a closed-loop feedback mechanism where sensor data directly informs pump activity.
-- **Research Integrity**: Every action (relay toggle, motor step, sensor query) is written to `master.csv` with nanosecond-precision timestamps to support academic reproducibility within the FOODI initiative.
+- **Precision Automation**: Closed-loop feedback mechanism where sensor data directly informs pump activity.
+- **Research Integrity**: Every action is written to CSVs with high-precision timestamps to support academic reproducibility within the FOODI initiative.

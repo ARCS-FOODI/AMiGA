@@ -28,6 +28,11 @@ The AMiGA backend now strictly tracks historical SIS data utilizing a dedicated 
 - **Log Location:** `~/.amiga_runtime_data/sis_data.csv`
 - **CSV Output Format:**
   - `time`: Current Timestamp (YYYY-MM-DD HH:MM:SS)
-  - `data type`: `telemetry`
-  - `componeent`: `SIS.py`
-  - `values`: Semicolon-separated key-value pairs (e.g., `ph=6.5; moisture=45.2; temperature=18.5; ec=800; ...`)
+  - `component`: `SIS`
+  - `moisture`: Moisture percentage
+  - `nitrogen`: Nitrogen level
+  - `temperature`: Temperature in °C
+  - `ph`: pH value
+  - `ec`: Electrical conductivity
+  - `phosphorus`: Phosphorus level
+  - `potassium`: Potassium level

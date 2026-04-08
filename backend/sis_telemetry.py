@@ -20,10 +20,43 @@ def _ensure_dir() -> None:
 
 def _init_csv() -> None:
     _ensure_dir()
+    expected_header = [
+        "time",
+        "component",
+        "moisture",
+        "nitrogen",
+        "temperature",
+        "ph",
+        "ec",
+        "phosphorus",
+        "potassium",
+    ]
+    expected_header_line = ",".join(expected_header)
+    legacy_header_line = "time,data type,componeent,values"
+
     if not TELEMETRY_FILE.exists():
         with open(TELEMETRY_FILE, mode='w', newline='', encoding="utf-8") as file:
             writer = csv.writer(file)
-            writer.writerow(["time", "data type", "componeent", "values"])
+            writer.writerow(expected_header)
+        return
+
+    with open(TELEMETRY_FILE, mode='r', newline='', encoding="utf-8") as file:
+        first_line = file.readline().strip()
+        rest_lines = file.read().splitlines()
+
+    if first_line == expected_header_line:
+        return
+
+    if first_line == legacy_header_line:
+        data_lines = rest_lines
+    else:
+        data_lines = [first_line] + rest_lines if first_line else rest_lines
+
+    with open(TELEMETRY_FILE, mode='w', newline='', encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(expected_header)
+        for line in data_lines:
+            file.write(line + "\n")
 
 
 def _tick() -> None:
@@ -34,14 +67,19 @@ def _tick() -> None:
         data = sis.manager.read_data()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        components = ["ph", "moisture", "temperature", "ec", "nitrogen", "phosphorus", "potassium"]
-        
-        # Format values as 'ec=val; moisture=val; etc..'
-        vals_str = "; ".join(f"{c}={data.get(c, '')}" for c in components)
-        
         with open(TELEMETRY_FILE, mode='a', newline='', encoding="utf-8") as file:
             writer = csv.writer(file)
-            writer.writerow([now_str, "telemetry", "SIS.py", vals_str])
+            writer.writerow([
+                now_str,
+                "SIS",
+                data.get("moisture", ""),
+                data.get("nitrogen", ""),
+                data.get("temperature", ""),
+                data.get("ph", ""),
+                data.get("ec", ""),
+                data.get("phosphorus", ""),
+                data.get("potassium", ""),
+            ])
             
     except Exception as e:
         print(f"[SIS_TELEMETRY] Failed to read or write SIS data: {e}")

@@ -21,15 +21,15 @@ from .settings import (
 
 LOG_FILE = Path(__file__).resolve().parents[1] / "data" / "sensors.csv"
 
-def _log_sensor_data_wide(device_name: str, ts: str, v0: float, v1: float, v2: float, v3: float, do_state: Optional[str]) -> None:
+def _log_sensor_data_wide(device_name: str, ts: str, addr: int, v0: float, v1: float, v2: float, v3: float) -> None:
     try:
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         file_exists = LOG_FILE.exists()
         with LOG_FILE.open("a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(["timestamp", "device_name", "v0", "v1", "v2", "v3", "do_state"])
-            writer.writerow([ts, device_name, round(v0, 4), round(v1, 4), round(v2, 4), round(v3, 4), do_state])
+                writer.writerow(["timestamp", "device_name", "addr", "v0", "v1", "v2", "v3"])
+            writer.writerow([ts, device_name, addr, round(v0, 4), round(v1, 4), round(v2, 4), round(v3, 4)])
     except Exception as e:
         print(f"[LOG] Failed to write to {LOG_FILE.name}: {e}")
 
@@ -61,7 +61,7 @@ else:
         def gpio_claim_input(self, handle, pin): pass
         def gpio_read(self, handle, pin): return 1 # 1 = Dry
 
-    board = type("board", (), {"SCL": 1, "SDA": 2})
+    board = type("board", (), {"SCL": 1, "SDA": 2, "I2C": lambda *a, **k: None})
     busio = type("busio", (), {"I2C": MockI2C})
     ADS = type("ADS", (), {"ADS1115": MockADS})
     AnalogIn = MockAnalogIn
@@ -97,7 +97,7 @@ class SensorArray:
         with self._lock:
             # Init I2C ADC
             if not self._i2c:
-                self._i2c = busio.I2C(board.SCL, board.SDA)
+                self._i2c = board.I2C()
 
             # Init DO pin if requested
             if use_digital and handle is not None:
@@ -106,7 +106,7 @@ class SensorArray:
 
     def _ensure_adc(self, addr, gain):
         if not self._i2c:
-            self._i2c = busio.I2C(board.SCL, board.SDA)
+            self._i2c = board.I2C()
         if addr not in self._ads_dict:
             ads = ADS.ADS1115(self._i2c, address=addr)
             ads.gain = gain
@@ -173,11 +173,11 @@ class SensorArray:
                 _log_sensor_data_wide(
                     device_name="ads1115_array",
                     ts=ts,
+                    addr=req_addr,
                     v0=volts[0],
                     v1=volts[1],
                     v2=volts[2],
-                    v3=volts[3],
-                    do_state=do_state
+                    v3=volts[3]
                 )
 
                 if i < samples:

@@ -1,3 +1,5 @@
+# was originally in root dir, - chris
+
 #!/bin/bash
 # AMiGA Hybrid Startup Script (Real Scale + Simulated GPIO)
 

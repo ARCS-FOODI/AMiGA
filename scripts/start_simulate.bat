@@ -6,8 +6,8 @@ echo   Starting AMiGA Simulation
 echo =========================================
 echo.
 
-:: Get the directory where the script is located
-set "TARGET_DIR=%~dp0"
+:: Get the project root (parent of the scripts directory)
+set "TARGET_DIR=%~dp0.."
 cd /d "%TARGET_DIR%"
 
 :: Verify .venv exists

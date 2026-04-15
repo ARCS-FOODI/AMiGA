@@ -68,10 +68,10 @@ export default function ScaleMonitor() {
     useEffect(() => {
         pollLiveScale();
         pollBundleHistory();
-        
+
         const liveInterval = setInterval(pollLiveScale, POLL_INTERVAL_MS);
         const bundleInterval = setInterval(pollBundleHistory, 20000);
-        
+
         return () => {
             clearInterval(liveInterval);
             clearInterval(bundleInterval);
@@ -114,7 +114,7 @@ export default function ScaleMonitor() {
 
             {/* Dual Column Layout */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
-                
+
                 {/* Left Column: Live Scale */}
                 <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {/* Weight readout */}
@@ -153,10 +153,10 @@ export default function ScaleMonitor() {
 
                 {/* Right Column: Bundle Averages */}
                 <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ 
-                        background: 'rgba(0,0,0,0.15)', 
-                        padding: '1rem', 
-                        borderRadius: '8px', 
+                    <div style={{
+                        background: 'rgba(0,0,0,0.15)',
+                        padding: '1rem',
+                        borderRadius: '8px',
                         border: '1px solid var(--glass-border)',
                         height: '100%',
                         display: 'flex',
@@ -168,11 +168,11 @@ export default function ScaleMonitor() {
                             <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Telemetry Bundle Averages</h4>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Historical averages of recent 20-point bundles</div>
                         </div>
-                        
+
                         <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                           <Sparkline data={bundleHistory} />
+                            <Sparkline data={bundleHistory} />
                         </div>
-                        
+
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
                             {bundleHistory.length > 0 ? `Showing last ${bundleHistory.length} bundles` : 'Awaiting data...'}
                         </div>

@@ -10,8 +10,8 @@ echo "========================================="
 # Prevent script from stopping completely on a single dependency error
 set +e
 
-# Get the directory where the script is located
-TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+# Get the project root (parent of the scripts directory)
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &> /dev/null && pwd)"
 
 # 1. Setup Backend
 echo ""

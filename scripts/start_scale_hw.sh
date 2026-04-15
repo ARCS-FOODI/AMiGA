@@ -6,8 +6,8 @@ echo "  Starting AMiGA Hybrid Environment  "
 echo "  (Scale: HARDWARE | GPIO: SIMULATED)  "
 echo "========================================="
 
-# Get the directory where the script is located
-TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+# Get the project root (parent of the scripts directory)
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &> /dev/null && pwd)"
 
 # 1. Start the FastAPI Backend in the background
 echo "[1/2] Starting FastAPI Backend on port 8000..."

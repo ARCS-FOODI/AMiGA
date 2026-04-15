@@ -5,8 +5,8 @@ echo "========================================="
 echo "  Starting AMiGA Environment  "
 echo "========================================="
 
-# Get the directory where the script is located
-TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+# Get the project root (parent of the scripts directory)
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &> /dev/null && pwd)"
 
 # 1. Start the FastAPI Backend in the background
 echo "[1/2] Starting FastAPI Backend on port 8000..."
@@ -14,13 +14,19 @@ cd "$TARGET_DIR"
 # Activate the virtual environment so fastapi/uvicorn are found
 source .venv/bin/activate
 
-# Start backend, capture output for debugging if it fails
-python3 -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload > backend.log 2>&1 &
+# Daily log file: one log per calendar day, all runs append to the same file
+mkdir -p "$TARGET_DIR/logs"
+LOG_FILE="$TARGET_DIR/logs/backend_$(date +%Y-%m-%d).log"
+echo "" >> "$LOG_FILE"
+echo "=== Session started: $(date) ===" >> "$LOG_FILE"
+
+# Start backend, append output to today's log
+python3 -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload >> "$LOG_FILE" 2>&1 &
 BACKEND_PID=$!
 sleep 2 # Give it a second to see if it crashes immediately
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo "❌ Backend failed to start! Check backend.log for details:"
-    cat backend.log
+    echo "❌ Backend failed to start! Check $LOG_FILE for details:"
+    cat "$LOG_FILE"
     exit 1
 fi
 echo "✅ Backend started successfully (PID: $BACKEND_PID)"

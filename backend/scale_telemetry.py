@@ -90,29 +90,14 @@ def get_recent_averages() -> List[Dict[str, Any]]:
 def _run_forever() -> None:
     """
     Background loop ticking roughly every 1.0 second.
+    Disabled actively for the standalone shell unified_telemetry service.
     """
-    print(f"[TELEMETRY] Started scale telemetry logger. Target: {TELEMETRY_CSV}")
-    while not _stop_flag.is_set():
-        _tick()
-        # Sleep for 1 second but allow fast interrupt
-        _stop_flag.wait(1.0)
+    pass
 
 
 def start() -> None:
-    global _thread
-    if _thread and _thread.is_alive():
-        return
-
-    _stop_flag.clear()
-    
-    with _buffer_lock:
-        _current_buffer.clear()
-        
-    _thread = threading.Thread(target=_run_forever, name="amiga-scale-telemetry", daemon=True)
-    _thread.start()
+    pass
 
 
 def stop() -> None:
-    _stop_flag.set()
-    if _thread:
-        _thread.join(timeout=2.0)
+    pass

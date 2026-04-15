@@ -32,7 +32,7 @@ fi
 echo "✅ Backend started successfully (PID: $BACKEND_PID)"
 echo "[2/2] Starting Vite Frontend on port 5173..."
 cd "$TARGET_DIR/frontend"
-npm run dev &
+npm run dev -- --host &
 FRONTEND_PID=$!
 
 echo "========================================="

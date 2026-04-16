@@ -20,9 +20,23 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
     };
 
     useEffect(() => {
-        pollSensor();
-        const interval = setInterval(pollSensor, 10000);
-        return () => clearInterval(interval);
+        let timeoutId;
+        let isMounted = true;
+
+        const routine = async () => {
+            if (!isMounted) return;
+            await pollSensor();
+            if (isMounted) {
+                timeoutId = setTimeout(routine, 10000);
+            }
+        };
+
+        routine();
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     const Metric = ({ label, value, unit, color }) => (

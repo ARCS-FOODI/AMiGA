@@ -10,6 +10,21 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
     const [presetHz, setPresetHz] = useState('1000');
     const [customHz, setCustomHz] = useState('1000');
     const [locked, setLocked] = useState(false);
+    const [elapsed, setElapsed] = useState(0);
+
+    useEffect(() => {
+        let timer;
+        if (running) {
+            setElapsed(0);
+            const startTime = Date.now();
+            timer = setInterval(() => {
+                setElapsed(((Date.now() - startTime) / 1000).toFixed(1));
+            }, 100);
+        } else {
+            setElapsed(0);
+        }
+        return () => clearInterval(timer);
+    }, [running]);
 
     useEffect(() => {
         const checkLock = async () => {
@@ -137,7 +152,18 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                     </div>
                 </div>
 
-                <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', margin: '0.25rem 0' }}>
+                    <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--glass-border)' }} />
+                    <span style={{ 
+                        margin: '0 1rem', 
+                        fontSize: '0.75rem', 
+                        color: running ? 'var(--accent-yellow)' : 'var(--text-secondary)',
+                        fontFamily: 'monospace'
+                    }}>
+                        {running ? `Elapsed: ${elapsed}s` : ''}
+                    </span>
+                    <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--glass-border)' }} />
+                </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                     <div style={{ flex: 2 }}>

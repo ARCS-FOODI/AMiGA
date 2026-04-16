@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { runPumpMl, runPumpSeconds } from '../api';
+import { useState, useEffect } from 'react';
+import { runPumpMl, runPumpSeconds, getPumpsStatus } from '../api';
 
 export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)', hoverBase = '#3b82f6' }) {
     const [ml, setMl] = useState('50');
@@ -9,6 +9,23 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
     const [hzMode, setHzMode] = useState('preset');
     const [presetHz, setPresetHz] = useState('1000');
     const [customHz, setCustomHz] = useState('1000');
+    const [locked, setLocked] = useState(false);
+
+    useEffect(() => {
+        const checkLock = async () => {
+            try {
+                const status = await getPumpsStatus();
+                setLocked(status.locked);
+            } catch(e) {}
+        }
+        checkLock();
+        const interval = setInterval(checkLock, 5000);
+        window.addEventListener('amiga-refresh-sensors', checkLock);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('amiga-refresh-sensors', checkLock);
+        }
+    }, []);
 
     const getActiveHz = () => {
         return hzMode === 'preset' ? parseFloat(presetHz) : parseFloat(customHz);
@@ -50,8 +67,9 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
             </div>
 
             {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
+            {locked && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 'bold' }}>SYSTEM LOCKED</div>}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', opacity: locked ? 0.5 : 1 }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step Frequency (Torque / Speed)</label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <select
@@ -64,7 +82,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                                 setPresetHz(e.target.value);
                             }
                         }}
-                        disabled={running}
+                        disabled={running || locked}
                         style={{ flex: hzMode === 'custom' ? 1 : 2 }}
                     >
                         <option value="200">200 Hz (Slow / High Torque)</option>
@@ -79,7 +97,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             type="number"
                             value={customHz}
                             onChange={e => setCustomHz(e.target.value)}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ flex: 1 }}
                             placeholder="Hz"
                         />
@@ -95,14 +113,14 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             type="number"
                             value={ml}
                             onChange={e => setMl(e.target.value)}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ width: '100%' }}
                         />
                     </div>
                     <div style={{ display: 'flex', flex: 2, gap: '0.5rem' }}>
                         <button
                             onClick={() => handleRunMl('forward')}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ flex: 1, backgroundColor: colorBase, padding: '0.5rem' }}
                             title="Forward"
                         >
@@ -110,7 +128,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                         </button>
                         <button
                             onClick={() => handleRunMl('reverse')}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ flex: 1, backgroundColor: 'transparent', color: 'var(--text-primary)', border: `1px solid ${colorBase}`, padding: '0.5rem' }}
                             title="Reverse"
                         >
@@ -128,14 +146,14 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                             type="number"
                             value={seconds}
                             onChange={e => setSeconds(e.target.value)}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ width: '100%' }}
                         />
                     </div>
                     <div style={{ display: 'flex', flex: 2, gap: '0.5rem' }}>
                         <button
                             onClick={() => handleRunSecs('forward')}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ flex: 1, padding: '0.5rem' }}
                             title="Forward"
                         >
@@ -143,7 +161,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                         </button>
                         <button
                             onClick={() => handleRunSecs('reverse')}
-                            disabled={running}
+                            disabled={running || locked}
                             style={{ flex: 1, backgroundColor: 'transparent', border: '1px solid var(--text-secondary)', color: 'var(--text-secondary)', padding: '0.5rem' }}
                             title="Reverse"
                         >

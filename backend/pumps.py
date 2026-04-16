@@ -90,6 +90,8 @@ class StepperPump:
         write = lgpio.gpio_write
 
         while time.time() < end_time:
+            if manager.emergency_stop_active:
+                break
             write(self._handle, sp, 1)
             time.sleep(half)
             write(self._handle, sp, 0)
@@ -104,6 +106,9 @@ class StepperPump:
         """
         Run the pump for a specific duration. Thread-safe to prevent concurrent overlapping runs.
         """
+        if manager.emergency_stop_active:
+            raise RuntimeError("Pump operations are currently LOCKED by emergency stop.")
+            
         if not self._lock.acquire(blocking=False):
             raise RuntimeError(f"Pump '{self.name}' is already running.")
 
@@ -197,6 +202,8 @@ def step_for_seconds_multi(handle: int, pump_names: List[str], hz: float, second
     step_pins = [PUMP_PINS[p]["STEP"] for p in pump_names]
 
     while time.time() < end_time:
+        if manager.emergency_stop_active:
+            break
         for sp in step_pins:
             write(handle, sp, 1)
         time.sleep(half)
@@ -214,6 +221,7 @@ class PumpManager:
         self._handle = None
         self.pumps: Dict[str, StepperPump] = {}
         
+        self.emergency_stop_active = False
         self._manager_lock = threading.Lock()
         
         # Create instances
@@ -230,6 +238,7 @@ class PumpManager:
 
     def shutdown(self) -> None:
         """Safely disable all pumps and release the GPIO chip."""
+        self.emergency_stop_active = True
         if self._handle is not None:
             # Ensure all EN pins are put to sleep
             for pump in self.pumps.values():
@@ -237,6 +246,9 @@ class PumpManager:
                     lgpio.gpio_write(self._handle, pump.pins["EN"], 0)
             lgpio.gpiochip_close(self._handle)
             self._handle = None
+            
+    def set_emergency_stop(self, active: bool) -> None:
+        self.emergency_stop_active = active
             
     def request_enable_driver(self, enable: bool) -> None:
         """
@@ -258,6 +270,9 @@ class PumpManager:
         direction: str = DEFAULT_DIR
     ) -> Dict[str, Any]:
         """Run multiple pumps simultaneously for the same duration."""
+        if self.emergency_stop_active:
+            raise RuntimeError("Pump operations are currently LOCKED by emergency stop.")
+            
         if not self._handle:
             raise RuntimeError("PumpManager not initialized.")
 

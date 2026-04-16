@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './index.css'
 import Header from './components/Header'
 import LightControl from './components/LightControl'
+import PumpEmergencyControl from './components/PumpEmergencyControl'
 import PumpControl from './components/PumpControl'
 import SensorMonitor from './components/SensorMonitor'
 import SISMonitor from './components/SISMonitor'
@@ -16,6 +17,7 @@ function App() {
       <Header />
 
       <main className="grid-layout">
+        <PumpEmergencyControl />
         <LightControl />
         <PumpControl pumpName="water" colorBase="var(--accent-blue)" hoverBase="#3b82f6" />
         <PumpControl pumpName="food" colorBase="var(--accent-green)" hoverBase="#10b981" />

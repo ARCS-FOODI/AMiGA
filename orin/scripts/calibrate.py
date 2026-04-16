@@ -4,8 +4,8 @@ import glob
 import os
 
 # --- Configuration ---
-CHECKERBOARD = (9, 6) # Number of inner corners per a chessboard row and column
-SQUARE_SIZE_MM = 25.0 # Size of a square in your defined unit (mm, cm, etc.)
+CHECKERBOARD = (9, 7) # Number of inner corners per a chessboard row and column
+SQUARE_SIZE_MM = 6.35 # Size of a square in your defined unit (mm, cm, etc.)
 IMAGES_DIR = "calibration_images"
 OUTPUT_FILE = "calibration_data.yaml"
 
@@ -32,6 +32,10 @@ def main():
     gray = None
     img_shape = None
 
+    window_name = 'Detecting Corners'
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
     for fname in images:
         img = cv2.imread(fname)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -49,7 +53,7 @@ def main():
             
             # Draw and display the corners (optional feedback)
             cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
-            cv2.imshow('Detecting Corners', img)
+            cv2.imshow(window_name, img)
             cv2.waitKey(100)
         else:
             print(f"Corners not found in {fname}")

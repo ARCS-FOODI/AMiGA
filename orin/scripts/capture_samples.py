@@ -40,6 +40,10 @@ def main():
     print("'c' : Capture and save frame")
     print("'q' : Quit")
     
+    window_name = "Calibration Capture"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    
     count = 0
     while True:
         ret, frame = cap.read()
@@ -48,7 +52,7 @@ def main():
             time.sleep(0.1)
             continue
 
-        cv2.imshow("Calibration Capture (Press 'c' to capture, 'q' to quit)", frame)
+        cv2.imshow(window_name, frame)
         key = cv2.waitKey(1) & 0xFF
 
         if key == ord('c'):

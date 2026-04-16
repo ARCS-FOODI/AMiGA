@@ -5,6 +5,10 @@ import time
 import threading
 from datetime import datetime
 
+# --- NEW: CALIBRATION CONSTANTS ---
+CALIB_FILE = "calibration_data.yaml"
+TARGET_ZOOM = 50.0 # Your preferred 50% seamless zoom crop!
+
 class CameraStream:
     """
     Optimized Camera Handler for NVIDIA Jetson Orin.
@@ -19,11 +23,6 @@ class CameraStream:
         self.stopped = False
         
         # --- JETSON ORIN OPTIMIZED PIPELINE ---
-        # 1. v4l2src: Standard USB camera source
-        # 2. image/jpeg: MJPEG format (best for 1080p30 over USB)
-        # 3. nvv4l2decoder: NVIDIA Hardware Decoder Engine
-        # 4. nvvidconv: Hardware-accelerated color conversion
-        # 5. appsink: Hand-off frames to OpenCV
         self.pipeline = (
             f"v4l2src device=/dev/video{self.device_id} ! "
             f"image/jpeg, width={self.width}, height={self.height}, framerate={self.fps}/1 ! "
@@ -48,7 +47,6 @@ class CameraStream:
             print(f"[GSTREAMER SUCCESS] HW-Accelerated Pipeline Active.")
 
     def start(self):
-        # Daemon=True ensures thread closes when main script exits
         threading.Thread(target=self.update, args=(), daemon=True).start()
         return self
 
@@ -65,8 +63,39 @@ class CameraStream:
 
     def stop(self):
         self.stopped = True
-        time.sleep(0.5) # Give thread a moment to loop and see 'stopped'
+        time.sleep(0.5) 
         self.cap.release()
+
+# --- PREPARE CALIBRATION MAPS ---
+print("Loading calibration data...")
+try:
+    cv_file = cv2.FileStorage(CALIB_FILE, cv2.FILE_STORAGE_READ)
+    if not cv_file.isOpened():
+        raise Exception("File not found.")
+    mtx = cv_file.getNode("camera_matrix").mat()
+    dist = cv_file.getNode("dist_coeff").mat()
+    cv_file.release()
+    
+    if mtx is None or dist is None:
+         raise Exception("Missing matrix parameters.")
+         
+    # Generate maps using Base FOV
+    w, h = 1920, 1080
+    newcameramtx, _ = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1.0, (w, h))
+    mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w, h), 5)
+    
+    # Pre-calculate 50% Zoom Crop Constraints
+    max_crop_w = int(w * 0.35)
+    max_crop_h = int(h * 0.35)
+    crop_w = int(max_crop_w * (TARGET_ZOOM / 100.0))
+    crop_h = int(max_crop_h * (TARGET_ZOOM / 100.0))
+    print(f"[SUCCESS] Calibration & 50% Zoom Map Generated.")
+
+except Exception as e:
+    print(f"\n[ERROR] Could not load '{CALIB_FILE}'. Make sure you calibrated!")
+    print(e)
+    # Give dummy data so script doesn't crash but skips remap
+    mtx = None
 
 # --- SETUP DIRECTORIES ---
 output_root = "recordings"
@@ -78,19 +107,16 @@ session_dir = os.path.join(output_root, f"session_{session_time}")
 os.makedirs(session_dir)
 
 # --- CONFIGURATION ---
-# 30 seconds allows for 14 days of data to fit within ~20GB (at 500KB/pic)
 CAPTURE_INTERVAL = 30.0 
 
-# Initialize Optimized Stream
-cam = CameraStream().start()
+# Initialize Optimized Stream (Cam 1 -> Core /dev/video0)
+cam = CameraStream(device_id=0).start()
 
-
-# Wait for the first frame to populate
 while cam.read() is None:
     print("Waiting for camera initialization...")
     time.sleep(0.5)
 
-print(f"\n--- IR MOISTURE CAPTURE ACTIVE ---")
+print(f"\n--- IR MOISTURE CAPTURE ACTIVE (WITH UNDISTORTION) ---")
 print(f"Session: {session_dir}")
 print(f"Interval: {CAPTURE_INTERVAL} seconds")
 print(f"Target: 1080p @ 30fps")
@@ -99,24 +125,34 @@ print("Press 'q' in the window to stop tracking.\n")
 # --- WINDOW SETUP ---
 cv2.namedWindow('Original Camera Feed', cv2.WINDOW_NORMAL)
 cv2.namedWindow('AI Moisture Heatmap', cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Original Camera Feed', 640, 480)
+cv2.resizeWindow('Original Camera Feed', 640, 480) # Resize just initial bounds, can still maximize
 cv2.resizeWindow('AI Moisture Heatmap', 640, 480)
 
-# Trigger the first snapshot immediately on start
 last_snapshot_time = 0
 
 try:
     while True:
-        # Pull the latest frame from the background thread
         frame = cam.read()
         if frame is None:
             continue
 
-        # 2. Convert to Grayscale
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # --- NEW: APPLY UNDISTORTION & ZOOM ---
+        if mtx is not None:
+            # 1. Run the hardware remap correction
+            dst = cv2.remap(frame, mapx, mapy, cv2.INTER_LINEAR)
+            
+            # 2. Slice off the black edges dynamically using our 50% zoom crop
+            cropped_frame = dst[crop_h : h - crop_h, crop_w : w - crop_w]
+            
+            # 3. Scale back perfectly to 1080p
+            seamless_frame = cv2.resize(cropped_frame, (w, h))
+        else:
+            seamless_frame = frame
 
-        # 3. Process the Moisture Concept:
-        # Invert -> Jet Heatmap
+        # Convert to Grayscale using the NEW seamless frame
+        gray = cv2.cvtColor(seamless_frame, cv2.COLOR_BGR2GRAY)
+
+        # Process Moisture Heatmap
         inverted_gray = cv2.bitwise_not(gray)
         moisture_map = cv2.applyColorMap(inverted_gray, cv2.COLORMAP_JET)
 
@@ -124,15 +160,13 @@ try:
         current_time = time.time()
         if current_time - last_snapshot_time >= CAPTURE_INTERVAL:
             timestamp = datetime.now().strftime("%H%M%S")
-            
-            # Save Raw Only (Heatmap is generated later to save space)
+            # Save Raw Only (using the cleanly undistorted feed!)
             raw_path = os.path.join(session_dir, f"moisture_{timestamp}_raw.jpg")
-            cv2.imwrite(raw_path, frame)
-            
+            cv2.imwrite(raw_path, seamless_frame)
             last_snapshot_time = current_time
 
-        # 4. Display both feeds
-        cv2.imshow('Original Camera Feed', frame)
+        # Display Feeds (Both are now clean, edge-to-edge undistorted representations)
+        cv2.imshow('Original Camera Feed', seamless_frame)
         cv2.imshow('AI Moisture Heatmap', moisture_map)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

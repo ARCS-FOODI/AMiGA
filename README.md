@@ -75,20 +75,20 @@ AMiGA is engineered for low friction. It provides auto-configured deployment scr
 
 ### 1. Automatic Dependency Installation
 
-Depending on your host machine, run the setup script to instantly pull requirements, set up virtual environments (`.venv`), and initialize local data stores:
+Depending on your host machine, navigate to the `scripts` directory and run the setup script to instantly pull requirements, set up virtual environments (`.venv`), and initialize local data stores:
 
-- **Windows:** Run `.\install_dependencies.bat`
-- **Linux/Pi:** Run `./install_dependencies.sh`
-- **macOS:** Run `./install_dependencies_mac.sh`
+- **Windows:** Run `.\scripts\install_dependencies.bat`
+- **Linux/Pi:** Run `./scripts/install_dependencies.sh`
+- **macOS:** Run `./scripts/install_dependencies_mac.sh`
 
 ### 2. Booting the Control Stack
 
-| Operating Mode    | Environment             | Command                          | Description                               |
-| :---------------- | :---------------------- | :------------------------------- | :---------------------------------------- |
-| **Simulation**    | Windows                 | `.\start_simulate.bat`           | Boots UI and mock backend hardware layers.|
-| **Simulation**    | Linux / macOS           | `./start_simulate.sh`            | Boots UI and mock backend hardware layers.|
-| **Native Prod**   | Raspberry Pi / Hardware | `./start.sh`                     | Runs actual GPIO drivers & real hardware  |
-| **Scale Service** | Raspberry Pi            | `./start_scale_hw.sh`            | Standalone precision weight management    |
+| Operating Mode    | Environment             | Command                                | Description                               |
+| :---------------- | :---------------------- | :------------------------------------- | :---------------------------------------- |
+| **Simulation**    | Windows                 | `.\scripts\start_simulate.bat`         | Boots UI and mock backend hardware layers.|
+| **Simulation**    | Linux / macOS           | `./scripts/start_simulate.sh`          | Boots UI and mock backend hardware layers.|
+| **Native Prod**   | Raspberry Pi / Hardware | `./scripts/start.sh` (supports `--host`)| Runs actual GPIO drivers & real hardware  |
+| **Scale Service** | Raspberry Pi            | `./scripts/start_scale_hw.sh`          | Standalone precision weight management    |
 
 ---
 
@@ -100,8 +100,9 @@ AMiGA/
 ├── frontend/           # React + Vite web dashboard application
 ├── orin/               # NVIDIA Jetson Orin specialized computer vision and thermal scripts
 ├── pi4/                # Telemetry scraping and OCR integration scripts
-├── docs/               # Detailed technical documentation and hardware integration guides
-├── data/               # Persistent local storage across simulation and native modes
+├── docs/               # Detailed technical documentation (system, hardware, recipes)
+├── scripts/            # Deployment, startup, and telemetry shell/batch scripts
+├── data/               # Persistent local storage (e.g., CSV telemetry logs, SQLite)
 ├── kratky/             # Auxiliary legacy modes (hydroponic routines)
 └── legacy/             # Deprecated experimental concepts & tests
 ```
@@ -114,7 +115,8 @@ For researchers, contributors, and operators looking to understand the inner wor
 
 - **[`docs/system_overview.md`](docs/system_overview.md)** - Comprehensive architectural and software structural breakdown.
 - **[`docs/hardware_integration.md`](docs/hardware_integration.md)** - Specifics on hardware wiring, sensor calibration, and component datasheets.
-- **[`docs/hardware/orin_vision.md`](docs/hardware/orin_vision.md)** - Details pertaining specifically to machine vision implementation.
+- **[`docs/hardware/`](docs/hardware/)** - Dedicated documentation directory for individual subsystems (e.g., Orin vision, sensors, lights, pumps, load cells, atmospherics).
+- **[`docs/recipe_manager.md`](docs/recipe_manager.md)** - Guide for plant nutrition routing, germination staging, and crop cycles (e.g., Microgreens).
 
 ---
 

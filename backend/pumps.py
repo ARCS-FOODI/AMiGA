@@ -33,6 +33,7 @@ class StepperPump:
         
         # Public state
         self.is_running = False
+        self.direction = "forward"
         
         # Load initial calibration
         self.calibration_rate = self._load_calibration()
@@ -63,8 +64,10 @@ class StepperPump:
         name = dir_name.lower()
         if name in ("fwd", "forward", "cw"):
             lgpio.gpio_write(self._handle, self.pins["DIR"], 1)
+            self.direction = name
         elif name in ("rev", "reverse", "ccw", "back"):
             lgpio.gpio_write(self._handle, self.pins["DIR"], 0)
+            self.direction = name
         else:
             raise ValueError("dir must be 'forward' or 'reverse'")
 

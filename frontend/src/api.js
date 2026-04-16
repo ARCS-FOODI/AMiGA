@@ -43,6 +43,10 @@ export const calibratePump = (pump, ml_per_sec) =>
         body: JSON.stringify({ pump, ml_per_sec })
     }).then(handleResponse);
 
+export const stopAllPumps = () => fetch(`${API_BASE}/pump/stop-all`, { method: "POST" }).then(handleResponse);
+export const unlockAllPumps = () => fetch(`${API_BASE}/pump/unlock-all`, { method: "POST" }).then(handleResponse);
+export const getPumpsStatus = () => fetch(`${API_BASE}/pump/status`).then(handleResponse);
+
 export const snapshotSensors = (options = {}) => {
     const { samples = 1, avg = 5, addr = 0x48, do_pin = 6 } = options;
     return fetch(`${API_BASE}/sensors/read`, {

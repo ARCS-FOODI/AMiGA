@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
     ResponsiveContainer, 
     LineChart, 
@@ -19,6 +19,7 @@ import { fetchTelemetry } from '../api';
  * @param {string[]} dataKeys - The columns to display as lines
  * @param {string[]} colors - Colors for each line
  * @param {Object} filter - Optional filter object (e.g. { device_id: 'ADS1115_0x48' })
+ * @param {boolean} isComparative - If true, merges rows by timestamp across multiple devices
  * @param {number} historyHours - How many hours of data to show (default 4)
  * @param {number} refreshInterval - Refresh rate in ms (default 10000)
  */
@@ -28,6 +29,7 @@ export default function TelemetryChart({
     dataKeys = ["v0"], 
     colors = ["var(--accent-teal)"],
     filter = null,
+    isComparative = false,
     historyHours = 4,
     refreshInterval = 10000 
 }) {
@@ -35,7 +37,13 @@ export default function TelemetryChart({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const pullData = async () => {
+    // Derived device label for visual verification
+    const deviceTag = useMemo(() => {
+        if (!filter || isComparative) return null;
+        return Object.values(filter).join(', ');
+    }, [filter, isComparative]);
+
+    const pullData = useCallback(async () => {
         try {
             const csvText = await fetchTelemetry(filename);
             const parsed = Papa.parse(csvText, { 
@@ -48,57 +56,106 @@ export default function TelemetryChart({
                 throw new Error("Failed to parse CSV data.");
             }
 
-            // Apply filter if provided
-            let rows = parsed.data;
-            if (filter) {
-                rows = rows.filter(row => {
-                    return Object.entries(filter).every(([key, value]) => {
-                        const rowVal = row[key];
-                        if (typeof rowVal === 'string' && typeof value === 'string') {
-                            return rowVal.toLowerCase() === value.toLowerCase();
-                        }
-                        return rowVal === value;
-                    });
-                });
-            }
-
-            // Filter for last 4 hours
+            // Filter for last N hours first (Performance)
             const now = new Date();
             const cutoff = now.getTime() - (historyHours * 60 * 60 * 1000);
             
-            const filteredData = parsed.data.filter(row => {
+            let sourceRows = parsed.data.filter(row => {
                 if (!row.time) return false;
                 const d = new Date(row.time);
                 return d.getTime() > cutoff;
-            }).map(row => ({
-                ...row,
-                // Short time for XAxis labels
-                displayTime: row.time ? new Date(row.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
-            }));
+            });
 
-            setData(filteredData);
+            let processedData = [];
+
+            if (isComparative) {
+                // PIVOT logic for overlaying multiple devices
+                // Group by timestamp (rounded to nearest second to align slightly offset logs)
+                const groups = new Map();
+                
+                sourceRows.forEach(row => {
+                    const d = new Date(row.time);
+                    const tsKey = Math.floor(d.getTime() / 1000) * 1000; // Snap to 1s window
+                    const devId = row['device_id'] || row['device_name'] || 'unknown';
+                    const devShort = (devId.includes('0x')) ? devId.split('_').pop() : devId;
+
+                    if (!groups.has(tsKey)) {
+                        groups.set(tsKey, { 
+                            time: row.time,
+                            displayTime: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                    }
+                    
+                    const entry = groups.get(tsKey);
+                    // Add sensor values with device prefix
+                    dataKeys.forEach(k => {
+                        if (row[k] !== undefined) {
+                            entry[`${devShort}_${k}`] = row[k];
+                        }
+                    });
+                });
+
+                processedData = Array.from(groups.values()).sort((a, b) => new Date(a.time) - new Date(b.time));
+            } else {
+                // LEGACY Filter logic
+                let rows = sourceRows;
+                if (filter) {
+                    rows = rows.filter(row => {
+                        return Object.entries(filter).every(([key, value]) => {
+                            const rowVal = row[key] !== undefined ? row[key] : row['device_id'] !== undefined ? row['device_id'] : row['device_name'];
+                            if (typeof rowVal === 'string' && typeof value === 'string') {
+                                return rowVal.toLowerCase() === value.toLowerCase();
+                            }
+                            return rowVal === value;
+                        });
+                    });
+                }
+
+                processedData = rows.map(row => ({
+                    ...row,
+                    displayTime: row.time ? new Date(row.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+                }));
+            }
+
+            setData(processedData);
             setError(null);
         } catch (err) {
+            console.error(`[TelemetryChart] ${filename} error:`, err);
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, [filename, filter, dataKeys, isComparative, historyHours]);
 
     useEffect(() => {
         pullData();
         const interval = setInterval(pullData, refreshInterval);
         return () => clearInterval(interval);
-    }, [filename]);
+    }, [pullData, refreshInterval]);
+
+    // Generate accurate data keys for comparative mode
+    // e.g. if we have 0x48 and 0x4b, and keys v0,v1... we want 0x48_v0, 0x4b_v0
+    const linesToRender = useMemo(() => {
+        if (!isComparative) return dataKeys.map((k, i) => ({ key: k, color: colors[i % colors.length], label: k.toUpperCase() }));
+
+        // For comparative, we need to inspect the data or know the devices
+        // We'll extract all keys that look like DEVICE_KEY
+        if (data.length === 0) return [];
+        
+        const allKeys = Object.keys(data[0]).filter(k => k !== 'time' && k !== 'displayTime');
+        return allKeys.map((k, i) => ({
+            key: k,
+            color: colors[i % colors.length],
+            label: k.replace('_', ' ').toUpperCase()
+        }));
+    }, [isComparative, dataKeys, colors, data]);
 
     if (error && data.length === 0) {
         return (
             <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--accent-red)' }}>
                 <p>⚠️ Failed to load {title} history</p>
+                {deviceTag && <p style={{ fontSize: '0.65rem' }}>Target: {deviceTag}</p>}
                 <p style={{ fontSize: '0.75rem', opacity: 0.7 }}>{error}</p>
-                <div style={{ fontSize: '0.65rem', marginTop: '1rem', color: 'var(--text-secondary)' }}>
-                    Ensure a Growth Cycle is ACTIVE and recording telemetry.
-                </div>
             </div>
         );
     }
@@ -106,16 +163,42 @@ export default function TelemetryChart({
     return (
         <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', minHeight: '340px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>📈 {title}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>📈 {title}</h3>
+                    {deviceTag && (
+                        <span style={{ 
+                            fontSize: '0.6rem', 
+                            background: 'rgba(255,255,255,0.1)', 
+                            padding: '2px 6px', 
+                            borderRadius: '4px', 
+                            fontFamily: 'monospace',
+                            color: 'var(--text-secondary)'
+                        }}>
+                            {deviceTag}
+                        </span>
+                    )}
+                    {isComparative && (
+                        <span style={{ 
+                            fontSize: '0.6rem', 
+                            background: 'var(--accent-blue)', 
+                            color: 'white',
+                            padding: '2px 6px', 
+                            borderRadius: '4px', 
+                            textTransform: 'uppercase'
+                        }}>
+                            Overlay
+                        </span>
+                    )}
+                </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    LAST {historyHours} HOURS • {data.length} PTS
+                    {data.length} PTS • {historyHours}H
                 </div>
             </div>
 
             <div style={{ width: '100%', height: '260px', marginTop: '1rem' }}>
                 {loading && data.length === 0 ? (
                     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                        Analyzing Data Stream...
+                        Building Matrix View...
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -141,12 +224,13 @@ export default function TelemetryChart({
                                 itemStyle={{ padding: '2px 0' }}
                             />
                             <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                            {dataKeys.map((key, i) => (
+                            {linesToRender.map((line) => (
                                 <Line
-                                    key={key}
+                                    key={line.key}
+                                    name={line.label}
                                     type="monotone"
-                                    dataKey={key}
-                                    stroke={colors[i % colors.length]}
+                                    dataKey={line.key}
+                                    stroke={line.color}
                                     strokeWidth={2}
                                     dot={false}
                                     activeDot={{ r: 4, stroke: 'white', strokeWidth: 2 }}

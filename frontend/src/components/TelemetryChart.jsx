@@ -78,12 +78,13 @@ export default function TelemetryChart({
 
             if (isComparative) {
                 // PIVOT logic for overlaying multiple devices
-                // Group by timestamp (rounded to nearest second to align slightly offset logs)
+                // Group by timestamp (rounded to nearest 5 seconds to align slightly offset logs)
                 const groups = new Map();
                 
                 sourceRows.forEach(row => {
                     const d = new Date(row.time);
-                    const tsKey = Math.floor(d.getTime() / 1000) * 1000; // Snap to 1s window
+                    // Snap to 5s window to group near-simultaneous sensor logs
+                    const tsKey = Math.floor(d.getTime() / 5000) * 5000; 
                     const devId = row['device_id'] || row['device_name'] || 'unknown';
                     const devShort = (devId.includes('0x')) ? devId.split('_').pop() : devId;
 
@@ -246,6 +247,7 @@ export default function TelemetryChart({
                                     strokeWidth={2}
                                     dot={false}
                                     hide={hiddenKeys.includes(line.key)}
+                                    connectNulls={true}
                                     activeDot={{ r: 4, stroke: 'white', strokeWidth: 2 }}
                                     animationDuration={500}
                                 />

@@ -25,6 +25,14 @@ def register_on_dispense_callback(callback):
     if callback not in _on_dispense_callbacks:
         _on_dispense_callbacks.append(callback)
 
+def _trigger_dispense_callbacks(result: Dict[str, Any]) -> None:
+    """Helper to fire callbacks with dispensed data."""
+    for cb in _on_dispense_callbacks:
+        try:
+            cb(result)
+        except Exception as e:
+            print(f"[PUMP] Telemetry callback error: {e}")
+
 
 class StepperPump:
     """
@@ -104,14 +112,6 @@ class StepperPump:
             write(self._handle, sp, 0)
             time.sleep(half)
 
-    def _trigger_dispense_callbacks(self, result: Dict[str, Any]) -> None:
-        """Helper to fire callbacks with dispensed data."""
-        for cb in _on_dispense_callbacks:
-            try:
-                cb(result)
-            except Exception as e:
-                print(f"[PUMP] Telemetry callback error: {e}")
-
     def run_for_seconds(
         self, 
         seconds: float, 
@@ -152,7 +152,7 @@ class StepperPump:
         import traceback
         frames = traceback.extract_stack()
         if not any(f.name == "dispense_ml" for f in frames):
-            self._trigger_dispense_callbacks(result)
+            _trigger_dispense_callbacks(result)
             
         return result
 
@@ -188,7 +188,7 @@ class StepperPump:
         except Exception as e:
             print(f"[SCALE] Failed to add water weight: {e}")
         
-        self._trigger_dispense_callbacks(result)
+        _trigger_dispense_callbacks(result)
             
         return result
 

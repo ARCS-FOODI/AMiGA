@@ -39,8 +39,8 @@ def _run_heartbeat() -> None:
     """Slow loop to log current state periodically even if no changes occur."""
     while not _stop_flag.is_set():
         log_light_event(light.manager.main_light.is_on, event_type="HEARTBEAT")
-        # Wait 1 hour between heartbeats
-        if _stop_flag.wait(3600):
+        # Wait 1 minute between heartbeats
+        if _stop_flag.wait(60):
             break
 
 def start(session_dir: str, interval: float = 5.0) -> None:

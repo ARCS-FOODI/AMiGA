@@ -47,7 +47,7 @@ def _run_heartbeat() -> None:
     while not _stop_flag.is_set():
         # Heartbeat doesn't log specific pump data, just a system-is-alive entry
         log_pump_event({"pump": "SYSTEM"}, event_type="HEARTBEAT")
-        if _stop_flag.wait(3600): # 1 hour
+        if _stop_flag.wait(60): # 1 minute
             break
 
 def start(session_dir: str, interval: float = 5.0) -> None:

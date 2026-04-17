@@ -1,56 +1,51 @@
+from __future__ import annotations
+
 import threading
 import time
 import csv
-import json
-from datetime import datetime
 from pathlib import Path
-
-from . import sis
+from datetime import datetime
+from . import sensors
 
 _thread: threading.Thread | None = None
 _stop_flag = threading.Event()
 _session_dir: Path | None = None
 _interval: float = 5.0
-_device_name = "SIS_Probe"
+_device_name = "ADS1115_Array"
 
 def _tick() -> None:
     if not _session_dir:
         return
-    """
-    Reads the SIS sensor and writes a row to the CSV file.
-    """
     try:
-        data = sis.manager.read_data()
+        data = sensors.manager.main_array.snapshot(samples=1, interval=0.0)
+        readings = data.get("readings", [])
+        if not readings:
+            return
+            
+        volts = readings[0].get("voltages", [None]*4)
         now_iso = datetime.now().astimezone().isoformat()
         
-        file_path = _session_dir / "sis_data.csv"
+        file_path = _session_dir / "sensors.csv"
         file_exists = file_path.exists()
         
         with file_path.open("a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow([
-                    "time", "device_name", "moisture", "nitrogen", 
-                    "temperature", "ph", "ec", "phosphorus", "potassium"
-                ])
-                
+                writer.writerow(["time", "device_name", "v0", "v1", "v2", "v3"])
             writer.writerow([
-                now_iso,
-                _device_name,
-                data.get("moisture", ""),
-                data.get("nitrogen", ""),
-                data.get("temperature", ""),
-                data.get("ph", ""),
-                data.get("ec", ""),
-                data.get("phosphorus", ""),
-                data.get("potassium", ""),
+                now_iso, 
+                _device_name, 
+                round(volts[0], 4) if volts[0] is not None else "",
+                round(volts[1], 4) if volts[1] is not None else "",
+                round(volts[2], 4) if volts[2] is not None else "",
+                round(volts[3], 4) if volts[3] is not None else ""
             ])
             
     except Exception as e:
-        print(f"[SIS_TELEMETRY] Failed to read or write SIS data: {e}")
+        print(f"[SENSORS_TELEMETRY] Failed to read or write data: {e}")
 
 def _run_forever() -> None:
-    print(f"[SIS_TELEMETRY] Started SIS telemetry thread. Saving to: {_session_dir}")
+    print(f"[SENSORS_TELEMETRY] Started sensors telemetry thread. Saving to: {_session_dir}")
     while not _stop_flag.is_set():
         _tick()
         _stop_flag.wait(_interval)
@@ -59,13 +54,13 @@ def start(session_dir: str, interval: float = 5.0) -> None:
     global _thread, _session_dir, _interval
     if _thread and _thread.is_alive():
         return
-
+        
     _session_dir = Path(session_dir)
     _session_dir.mkdir(parents=True, exist_ok=True)
     _interval = interval
     _stop_flag.clear()
     
-    _thread = threading.Thread(target=_run_forever, name="amiga-sis-telemetry", daemon=True)
+    _thread = threading.Thread(target=_run_forever, name="amiga-sensors-telemetry", daemon=True)
     _thread.start()
 
 def stop() -> None:

@@ -79,3 +79,12 @@ export const runControlCycle = (data) =>
 export const getScaleWeight = () => fetch(`${API_BASE}/scale/read`).then(handleResponse);
 export const getScaleBundles = () => fetch(`${API_BASE}/scale/bundles`).then(handleResponse);
 export const tareScale = () => fetch(`${API_BASE}/scale/tare`, { method: "POST" }).then(handleResponse);
+
+export const getRecordingStatus = () => fetch(`${API_BASE}/recording/status`).then(handleResponse);
+export const startRecording = (frequencies) => 
+    fetch(`${API_BASE}/recording/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frequencies })
+    }).then(handleResponse);
+export const stopRecording = () => fetch(`${API_BASE}/recording/stop`, { method: "POST" }).then(handleResponse);

@@ -13,6 +13,11 @@ from .. import tsl2561 as hs_tsl2561
 from .. import grow_scheduler
 from .. import scale_telemetry
 from .. import sis_telemetry
+from .. import sensors_telemetry
+from .. import scd41_telemetry
+from .. import tsl2561_telemetry
+from .. import light_telemetry
+from .. import pump_telemetry
 from .. import config_store
 from ..settings import PUMP_PINS, DEFAULT_ADDR, DEFAULT_GAIN, DEFAULT_AVG, DEFAULT_THRESH, DEFAULT_HZ, DEFAULT_DIR, DEFAULT_VOTE_K, DEFAULT_IRR_SEC
 
@@ -29,8 +34,9 @@ async def lifespan(app: FastAPI):
     hs_scd41.manager.startup()
     hs_tsl2561.manager.startup()
     grow_scheduler.start()
-    scale_telemetry.start()
-    sis_telemetry.start()
+    
+    # Do not auto-start scale and sis telemetry here; let /recording/start handle it.
+    # We remove scale_telemetry.start() and sis_telemetry.start() from startup.
     
     print("\n" + "="*50)
     print("  AMiGA API backend is running.")
@@ -42,6 +48,12 @@ async def lifespan(app: FastAPI):
     finally:
         sis_telemetry.stop()
         scale_telemetry.stop()
+        sensors_telemetry.stop()
+        scd41_telemetry.stop()
+        tsl2561_telemetry.stop()
+        light_telemetry.stop()
+        pump_telemetry.stop()
+        
         grow_scheduler.stop()
         hs_pumps.manager.shutdown()
         hs_light.manager.shutdown()
@@ -71,6 +83,9 @@ app.include_router(scale.router)
 app.include_router(sis.router)
 app.include_router(scd41.router)
 app.include_router(tsl2561.router)
+
+from .routers import recording
+app.include_router(recording.router)
 
 
 @app.get("/config", tags=["system"])

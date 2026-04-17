@@ -5,7 +5,7 @@ AMiGA (Automated Modular Irrigation & Growth Assistant) is a research platform f
 - **Platform:** Raspberry Pi / Jetson Orin / PC (Simulation)
 - **Languages:** Python 3.10+, JavaScript (ES6+)
 - **Frameworks:** FastAPI, React (Vite)
-- **Core Controller:** [[main_controller]]
+- **Core Controller:** [Main Controller](hardware/main_controller.md)
 
 ## Software Architecture
 
@@ -30,11 +30,11 @@ A responsive web dashboard built with **Vite** and **Tailwind CSS**. It provides
 
 ## Hardware Composition
 The AMiGA physical stack is modular:
-- **Irrigation**: Peristaltic [[pumps]] driven by TMC2209 stepper drivers.
-- **Lighting**: High-intensity grow [[lights]] managed via SSR relays.
+- **Irrigation**: Peristaltic [Pumps](hardware/pumps.md) driven by TMC2209 stepper drivers.
+- **Lighting**: High-intensity grow [Lights](hardware/lights.md) managed via SSR relays.
 - **Atmospheric Sensors**: I2C environmental tracking using SCD41 (CO2/Temp/Hum) and TSL2561 (Luminosity).
-- **Soil Intelligence**: [[sensors]] (Analog Moisture Array) and [[sis]] (7-in-1 Modbus NPK/pH/EC).
-- **Precision Metrics**: Integrated [[scale]] for harvest weight tracking.
+- **Soil Intelligence**: [Sensors](hardware/sensors.md) (Analog Moisture Array) and [SIS](hardware/sis.md) (7-in-1 Modbus NPK/pH/EC).
+- **Precision Metrics**: Integrated [Scale](hardware/scale.md) for harvest weight tracking.
 
 ## System Usage
 - **Precision Automation**: Closed-loop feedback mechanism where sensor data directly informs pump activity.

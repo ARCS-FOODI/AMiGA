@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getRecordingStatus, startRecording, stopRecording } from '../api';
+import { getRecordingStatus, startRecording, stopRecording, getRecipeStatus } from '../api';
 
 export default function RecordingButton() {
     const [isRecording, setIsRecording] = useState(false);
+    const [isCycling, setIsCycling] = useState(false);
     const [sessionDir, setSessionDir] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -21,9 +22,13 @@ export default function RecordingButton() {
 
     const fetchStatus = async () => {
         try {
-            const status = await getRecordingStatus();
-            setIsRecording(status.is_recording);
-            setSessionDir(status.session_dir);
+            const [recStatus, growStatus] = await Promise.all([
+                getRecordingStatus(),
+                getRecipeStatus()
+            ]);
+            setIsRecording(recStatus.is_recording);
+            setSessionDir(recStatus.session_dir);
+            setIsCycling(growStatus.is_cycling);
         } catch (err) {
             setError("Cannot connect to recording service.");
         } finally {
@@ -40,13 +45,23 @@ export default function RecordingButton() {
                 setFreqs(JSON.parse(savedPrefs));
             } catch (e) { }
         }
-        
+
         // Auto poll status
         const interval = setInterval(fetchStatus, 5000);
         return () => clearInterval(interval);
     }, []);
 
     const toggleRecording = async () => {
+        if (isRecording && isCycling) {
+            const confirmed = window.confirm(
+                "⚠️ ATTENTION: A Growth Lifecycle is currently ACTIVE.\n\n" +
+                "Stopping recording now will result in missing telemetry for this live cycle. " +
+                "It is recommended to stop the Growth Lifecycle Hub first if the experiment is finished.\n\n" +
+                "Do you still want to stop recording?"
+            );
+            if (!confirmed) return;
+        }
+
         setLoading(true);
         setError(null);
         try {
@@ -79,10 +94,10 @@ export default function RecordingButton() {
         <div className="glass-card" style={{ gridColumn: 'span 2', borderColor: isRecording ? 'var(--accent-red)' : 'var(--glass-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div 
-                        style={{ 
-                            width: '16px', height: '16px', borderRadius: '50%', 
-                            background: isRecording ? 'var(--accent-red)' : 'grey', 
+                    <div
+                        style={{
+                            width: '16px', height: '16px', borderRadius: '50%',
+                            background: isRecording ? 'var(--accent-red)' : 'grey',
                             boxShadow: isRecording ? '0 0 12px var(--accent-red)' : 'none',
                             animation: isRecording ? 'pulse 2s infinite' : 'none'
                         }}
@@ -90,7 +105,7 @@ export default function RecordingButton() {
                     <div>
                         <h3 style={{ margin: 0 }}>Data Recording</h3>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                            {isRecording 
+                            {isRecording
                                 ? `Recording to: ${sessionDir ? sessionDir.split('/').pop() : '...'}`
                                 : 'System Idle'}
                         </div>
@@ -98,15 +113,15 @@ export default function RecordingButton() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                        className="btn-secondary" 
+                    <button
+                        className="btn-secondary"
                         onClick={() => setShowSettings(!showSettings)}
                         disabled={loading || isRecording}
                     >
                         ⚙️ Settings
                     </button>
-                    <button 
-                        onClick={toggleRecording} 
+                    <button
+                        onClick={toggleRecording}
                         disabled={loading}
                         style={{
                             background: isRecording ? 'transparent' : 'var(--accent-red)',
@@ -121,7 +136,7 @@ export default function RecordingButton() {
                     </button>
                 </div>
             </div>
-            
+
             {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginTop: '1rem' }}>⚠️ {error}</div>}
 
             {showSettings && !isRecording && (
@@ -133,11 +148,11 @@ export default function RecordingButton() {
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
                                     {key.replace('_', ' ')}
                                 </label>
-                                <input 
-                                    type="number" 
-                                    min="0.1" 
-                                    step="0.1" 
-                                    value={freqs[key]} 
+                                <input
+                                    type="number"
+                                    min="0.1"
+                                    step="0.1"
+                                    value={freqs[key]}
                                     onChange={(e) => handleFreqChange(key, e.target.value)}
                                     style={{
                                         background: 'rgba(255,255,255,0.1)',

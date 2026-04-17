@@ -23,6 +23,7 @@ _active_session_dir: Optional[str] = None
 _is_recording: bool = False
 
 class RecordingConfigRequest(BaseModel):
+    recipeName: Optional[str] = None
     frequencies: Dict[str, float] = {
         "scale": 5.0,
         "sis": 5.0,
@@ -46,7 +47,8 @@ def start_recording(config: RecordingConfigRequest):
         
     try:
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        session_folder = f"session_{now_str}"
+        prefix = config.recipeName.replace(" ", "_") if config.recipeName else "manual"
+        session_folder = f"session_{prefix}_{now_str}"
         session_path = _get_base_path() / session_folder
         session_path.mkdir(parents=True, exist_ok=True)
         

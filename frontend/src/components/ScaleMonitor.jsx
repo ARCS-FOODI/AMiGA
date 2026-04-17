@@ -5,6 +5,16 @@ import { getScaleWeight, tareScale, getScaleBundles } from '../api';
 const POLL_INTERVAL_MS = 1000;
 const HISTORY_LENGTH = 20;
 
+// Compute trend arrow from recent history (slope over last 5 points)
+function getTrend(history) {
+    if (!history || history.length < 3) return null;
+    const recent = history.slice(-5);
+    const slope  = (recent[recent.length - 1] - recent[0]) / recent.length;
+    if (slope >  0.05) return { symbol: '↑', color: '#10b981', label: 'Increasing' };
+    if (slope < -0.05) return { symbol: '↓', color: '#eab308', label: 'Decreasing' };
+    return { symbol: '→', color: 'rgba(255,255,255,0.35)', label: 'Stable' };
+}
+
 export default function ScaleMonitor() {
     const [weight, setWeight] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -83,6 +93,8 @@ export default function ScaleMonitor() {
         ? Number(weight).toFixed(3)
         : '--.---';
 
+    const trend = getTrend(history);
+
     return (
         <div className="glass-card" style={{ position: 'relative', overflow: 'hidden' }}>
             {/* Loading indicator bar */}
@@ -117,8 +129,8 @@ export default function ScaleMonitor() {
 
                 {/* Left Column: Live Scale */}
                 <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {/* Weight readout */}
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+                    {/* Weight readout + trend arrow */}
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '0.8rem', padding: '1rem 0' }}>
                         <div style={{
                             fontSize: '3.5rem',
                             fontWeight: 'bold',
@@ -128,6 +140,21 @@ export default function ScaleMonitor() {
                         }}>
                             {formattedWeight} <span style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>g</span>
                         </div>
+                        {/* Trend arrow */}
+                        {trend && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                                <span style={{
+                                    fontSize: '1.6rem', fontWeight: 'bold',
+                                    color: trend.color,
+                                    textShadow: `0 0 10px ${trend.color}88`,
+                                    transition: 'color 0.4s ease',
+                                    lineHeight: 1,
+                                }}>{trend.symbol}</span>
+                                <span style={{ fontSize: '0.55rem', color: trend.color, opacity: 0.7, letterSpacing: '0.3px' }}>
+                                    {trend.label}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '-0.5rem' }}>Live Graph</div>

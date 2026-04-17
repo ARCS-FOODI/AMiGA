@@ -246,3 +246,5 @@ data/master.csv
 backend/data/scale_state.json
 data/sensors.csv
 data/records/
+data/current_recipe.json
+data/scheduler_state.json

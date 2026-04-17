@@ -18,10 +18,10 @@ export default function PumpEmergencyControl() {
     useEffect(() => {
         checkStatus();
         const interval = setInterval(checkStatus, 3000);
-        
+
         const handleRefresh = () => checkStatus();
         window.addEventListener('amiga-refresh-sensors', handleRefresh);
-        
+
         return () => {
             clearInterval(interval);
             window.removeEventListener('amiga-refresh-sensors', handleRefresh);
@@ -49,16 +49,16 @@ export default function PumpEmergencyControl() {
                         {locked ? 'All motor operations are currently LOCKED. Background tasks paused.' : 'System normal. Motors are unlocked and available.'}
                     </p>
                 </div>
-                
+
                 {locked ? (
-                    <button 
+                    <button
                         onClick={handleUnlock}
                         style={{ backgroundColor: 'var(--accent-green)', padding: '0.8rem 1.5rem', fontWeight: 'bold' }}
                     >
                         🔓 UNLOCK SYSTEM
                     </button>
                 ) : (
-                    <button 
+                    <button
                         onClick={handleStop}
                         style={{ backgroundColor: 'var(--accent-red)', padding: '0.8rem 1.5rem', fontWeight: 'bold', animation: runningPumps.length > 0 ? 'pulse 1s infinite' : 'none' }}
                     >
@@ -66,7 +66,7 @@ export default function PumpEmergencyControl() {
                     </button>
                 )}
             </div>
-            
+
             {!locked && runningPumps.length > 0 && (
                 <div style={{ marginTop: '1rem', color: 'var(--accent-yellow)', fontSize: '0.85rem' }}>
                     Active Pumps: {runningPumps.join(', ')}

@@ -84,8 +84,9 @@ app.include_router(sis.router)
 app.include_router(scd41.router)
 app.include_router(tsl2561.router)
 
-from .routers import recording
+from .routers import recording, recipe
 app.include_router(recording.router)
+app.include_router(recipe.router)
 
 
 @app.get("/config", tags=["system"])

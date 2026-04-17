@@ -102,3 +102,10 @@ export const saveRecipe = (recipe) =>
 
 export const getHealth = () => fetch(`${API_BASE}/health`).then(handleResponse);
 
+export const fetchTelemetry = (filename) => 
+    fetch(`${API_BASE}/recording/active/download/${filename}`)
+        .then(async res => {
+            if (!res.ok) throw new Error(`Telemetry Error: ${res.status}`);
+            return res.text();
+        });
+

@@ -12,6 +12,7 @@ import RecipeManager from './components/RecipeManager'
 import GrowthControlCenter from './components/GrowthControlCenter'
 import ScaleMonitor from './components/ScaleMonitor'
 import RecordingButton from './components/RecordingButton'
+import TelemetryChart from './components/TelemetryChart'
 
 function App() {
   return (
@@ -45,6 +46,20 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">Environment Monitors</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="grid-layout">
+              <TelemetryChart 
+                title="Air Quality History (SCD41)" 
+                filename="co2_data.csv" 
+                dataKeys={["co2_ppm", "humidity_percent", "temperature_c"]} 
+                colors={["var(--accent-teal)", "var(--accent-blue)", "var(--accent-orange)"]}
+              />
+              <TelemetryChart 
+                title="Luminosity History (TSL2561)" 
+                filename="light_data.csv" 
+                dataKeys={["lux"]} 
+                colors={["var(--accent-yellow)"]}
+              />
+            </div>
             <SCD41Monitor title="Environmental Condition (SCD41)" />
             <TSL2561Monitor title="Luminosity (TSL2561)" />
           </div>
@@ -53,10 +68,56 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">Grow Trays & Payload</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <TelemetryChart 
+                title="Comparative Moisture History (Matrix)" 
+                filename="sensors.csv" 
+                isComparative={true}
+                dataKeys={["v0", "v1", "v2", "v3"]} 
+                colors={[
+                  "var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)",
+                  "var(--accent-orange)", "var(--accent-yellow)", "#f43f5e", "#d946ef"
+                ]}
+              />
+            </div>
+            <div className="grid-layout">
+              <TelemetryChart 
+                title="Soil Nutrients (SIS NPK)" 
+                filename="sis_data.csv" 
+                dataKeys={["nitrogen", "phosphorus", "potassium"]} 
+                colors={["var(--accent-purple)", "var(--accent-orange)", "var(--accent-yellow)"]}
+              />
+              <TelemetryChart 
+                title="Soil Chemistry (SIS)" 
+                filename="sis_data.csv" 
+                dataKeys={["ph", "ec", "temperature"]} 
+                colors={["var(--accent-green)", "var(--accent-blue)", "var(--accent-red)"]}
+              />
+              <TelemetryChart 
+                title="Moisture History (Tray 1)" 
+                filename="sensors.csv" 
+                filter={{ device_id: 'ADS1115_0x48' }}
+                dataKeys={["v0", "v1", "v2", "v3"]} 
+                colors={["var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)"]}
+              />
+              <TelemetryChart 
+                title="Moisture History (Tray 2)" 
+                filename="sensors.csv" 
+                filter={{ device_id: 'ADS1115_0x4b' }}
+                dataKeys={["v0", "v1", "v2", "v3"]} 
+                colors={["var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)"]}
+              />
+              <TelemetryChart 
+                title="Weight History (Scale)" 
+                filename="scale_data.csv" 
+                dataKeys={["weight_g"]} 
+                colors={["var(--accent-orange)"]}
+              />
+            </div>
             <SISMonitor title="Main Grow Area SIS" />
             <div className="grid-layout">
               <SensorMonitor title="Tray 1 Sensors" addr={0x48} />
-              <SensorMonitor title="Tray 2 Sensors" addr={0x49} />
+              <SensorMonitor title="Tray 2 Sensors" addr={0x4B} />
               <ScaleMonitor />
             </div>
           </div>

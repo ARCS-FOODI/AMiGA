@@ -40,7 +40,7 @@ function ChannelBar({ index, voltage }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
             {/* Channel label */}
-            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.38)', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', fontWeight: 'bold', fontFamily: 'monospace' }}>
                 CH{index}
             </div>
 
@@ -177,7 +177,7 @@ export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48 }) {
                         { label: 'Good (1.0–2.5V)', color: '#10b981' },
                         { label: 'Sat. (<1.0V)',    color: '#0ea5e9' },
                     ].map((z, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)' }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)' }}>
                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: z.color, flexShrink: 0 }} />
                             {z.label}
                         </div>

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { getScaleWeight, tareScale, getScaleBundles } from '../api';
+import { getScaleWeight } from '../api';
 
-// Polling interval in ms — configurable between 500ms and 1000ms
+// Polling interval in ms
 const POLL_INTERVAL_MS = 1000;
-const HISTORY_LENGTH = 20;
+const HISTORY_LENGTH = 30;
 
-// Compute trend arrow from recent history (slope over last 5 points)
+// Compute trend arrow from recent history
 function getTrend(history) {
     if (!history || history.length < 3) return null;
     const recent = history.slice(-5);
@@ -16,12 +16,17 @@ function getTrend(history) {
 }
 
 export default function ScaleMonitor() {
-    const [weight, setWeight] = useState(null);
+    const [absoluteWeight, setAbsoluteWeight] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [history, setHistory] = useState([]);
-    const [bundleHistory, setBundleHistory] = useState([]);
     const historyRef = useRef([]);
+
+    // LocalStorage Reference State
+    const [referenceWeight, setReferenceWeight] = useState(() => {
+        const saved = localStorage.getItem('amiga_scale_ref');
+        return saved !== null ? parseFloat(saved) : 0;
+    });
 
     const pollLiveScale = async () => {
         setLoading(true);
@@ -29,9 +34,9 @@ export default function ScaleMonitor() {
         try {
             const data = await getScaleWeight();
             const w = data.weight;
-            setWeight(w);
+            setAbsoluteWeight(w);
 
-            // Update history for live sparkline
+            // Update history (Absolute values)
             const updated = [...historyRef.current, w].slice(-HISTORY_LENGTH);
             historyRef.current = updated;
             setHistory(updated);
@@ -42,61 +47,28 @@ export default function ScaleMonitor() {
         }
     };
 
-    const pollBundleHistory = async () => {
-        try {
-            const bundleData = await getScaleBundles();
-            if (bundleData && bundleData.history) {
-                const averages = bundleData.history.map(b => b.average);
-                setBundleHistory(averages);
-            }
-        } catch (err) {
-            console.error("Failed to fetch bundle history:", err);
-        }
+    const handleSetReference = () => {
+        const newRef = absoluteWeight || 0;
+        setReferenceWeight(newRef);
+        localStorage.setItem('amiga_scale_ref', newRef.toString());
     };
 
-    const handleTare = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            await tareScale();
-            // Reset history after tare since the baseline changed
-            historyRef.current = [];
-            setHistory([]);
-            await pollLiveScale();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleManualPoll = () => {
-        pollLiveScale();
-        pollBundleHistory();
+    const handleResetReference = () => {
+        setReferenceWeight(0);
+        localStorage.setItem('amiga_scale_ref', '0');
     };
 
     useEffect(() => {
         pollLiveScale();
-        pollBundleHistory();
-
         const liveInterval = setInterval(pollLiveScale, POLL_INTERVAL_MS);
-        const bundleInterval = setInterval(pollBundleHistory, 20000);
-
-        return () => {
-            clearInterval(liveInterval);
-            clearInterval(bundleInterval);
-        };
+        return () => clearInterval(liveInterval);
     }, []);
 
-    // Format weight strictly to 3 decimal places
-    const formattedWeight = weight !== null
-        ? Number(weight).toFixed(3)
-        : '--.---';
-
+    const netWeight = absoluteWeight !== null ? absoluteWeight - referenceWeight : null;
     const trend = getTrend(history);
 
     return (
-        <div className="glass-card" style={{ position: 'relative', overflow: 'hidden' }}>
+        <div className="glass-card" style={{ position: 'relative', overflow: 'hidden', minHeight: '340px' }}>
             {/* Loading indicator bar */}
             {loading && (
                 <div style={{
@@ -108,101 +80,82 @@ export default function ScaleMonitor() {
             )}
 
             {/* Header row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3>⚖️ US Solid Scale</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span
-                        className={`status-indicator ${weight !== null && !error ? 'status-online' : 'status-neutral'}`}
-                        style={{ backgroundColor: weight !== null && !error ? 'var(--accent-purple)' : '' }}
-                    ></span>
-                    <button onClick={handleManualPoll} disabled={loading} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                        {loading ? 'Polling...' : 'Poll Now'}
-                    </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <h3 style={{ margin: 0 }}>⚖️ Precision Scale</h3>
+                    <span 
+                        style={{ 
+                            fontSize: '0.65rem', 
+                            background: 'rgba(255,255,255,0.05)', 
+                            padding: '2px 8px', 
+                            borderRadius: '10px',
+                            color: 'var(--text-secondary)'
+                        }}
+                    >
+                        LIVE 1Hz
+                    </span>
                 </div>
+                <div className={`status-indicator ${absoluteWeight !== null && !error ? 'status-online' : 'status-neutral'}`}></div>
             </div>
 
             {/* Error display */}
             {error && <div style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
 
-            {/* Dual Column Layout */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
-
-                {/* Left Column: Live Scale */}
-                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {/* Weight readout + trend arrow */}
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '0.8rem', padding: '1rem 0' }}>
-                        <div style={{
-                            fontSize: '3.5rem',
-                            fontWeight: 'bold',
-                            fontFamily: 'monospace',
-                            color: weight !== null && weight < 0 ? 'var(--accent-red)' : 'var(--text-primary)',
-                            textShadow: '0 0 20px rgba(255,255,255,0.1)'
-                        }}>
-                            {formattedWeight} <span style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>g</span>
-                        </div>
-                        {/* Trend arrow */}
-                        {trend && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                                <span style={{
-                                    fontSize: '1.6rem', fontWeight: 'bold',
-                                    color: trend.color,
-                                    textShadow: `0 0 10px ${trend.color}88`,
-                                    transition: 'color 0.4s ease',
-                                    lineHeight: 1,
-                                }}>{trend.symbol}</span>
-                                <span style={{ fontSize: '0.55rem', color: trend.color, opacity: 0.7, letterSpacing: '0.3px' }}>
-                                    {trend.label}
-                                </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+                
+                {/* Main Readouts */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Net Weight (Relative)</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                            <div style={{ 
+                                fontSize: '3.5rem', 
+                                fontWeight: 'bold', 
+                                fontFamily: 'monospace',
+                                color: netWeight !== null && netWeight < 0 ? 'var(--accent-red)' : 'var(--accent-purple)',
+                            }}>
+                                {netWeight !== null ? netWeight.toFixed(3) : '--.---'}
                             </div>
-                        )}
+                            <span style={{ fontSize: '1.5rem', color: 'var(--text-secondary)' }}>g</span>
+                            
+                            {trend && (
+                                <div style={{ marginLeft: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '1.5rem', color: trend.color }}>{trend.symbol}</span>
+                                    <span style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }}>{trend.label}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '-0.5rem' }}>Live Graph</div>
-                    <Sparkline data={history} />
-
-                    <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '0.25rem 0' }} />
-
-                    {/* Tare section */}
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                        <div style={{ flex: 2, fontSize: '0.8rem', color: 'var(--text-secondary)', paddingBottom: '0.5rem' }}>
-                            Calibrate Zero Point
+                    <div style={{ display: 'flex', gap: '2rem', background: 'rgba(0,0,0,0.15)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                        <div>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>ABS GROSS</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                                {absoluteWeight !== null ? absoluteWeight.toFixed(3) : '--.---'}g
+                            </span>
                         </div>
-                        <button
-                            className="purple"
-                            onClick={handleTare}
-                            disabled={loading}
-                            style={{ flex: 1 }}
-                        >
-                            Tare Scale
-                        </button>
+                        <div style={{ borderLeft: '1px solid var(--glass-border)', paddingLeft: '2rem' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>REFERENCE</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace', color: 'var(--accent-teal)' }}>
+                                {referenceWeight.toFixed(3)}g
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button className="purple" onClick={handleSetReference} style={{ flex: 1 }}>Set Reference</button>
+                        <button onClick={handleResetReference} style={{ padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.05)' }}>Reset</button>
                     </div>
                 </div>
 
-                {/* Right Column: Bundle Averages */}
-                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{
-                        background: 'rgba(0,0,0,0.15)',
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        border: '1px solid var(--glass-border)',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        gap: '1rem'
-                    }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Telemetry Bundle Averages</h4>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Historical averages of recent 20-point bundles</div>
-                        </div>
-
-                        <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <Sparkline data={bundleHistory} />
-                        </div>
-
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
-                            {bundleHistory.length > 0 ? `Showing last ${bundleHistory.length} bundles` : 'Awaiting data...'}
-                        </div>
+                {/* Graph Area */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Weight Visualization</span>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--accent-teal)', opacity: 0.8 }}>--- Baseline At Ref</span>
+                    </div>
+                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)', flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+                        <Sparkline data={history} reference={referenceWeight} />
                     </div>
                 </div>
 
@@ -211,97 +164,75 @@ export default function ScaleMonitor() {
     );
 }
 
-
-/**
- * Sparkline — Inline SVG mini-chart showing the last N weight readings.
- * Renders a smooth polyline with a gradient fill beneath it.
- */
-function Sparkline({ data }) {
+function Sparkline({ data, reference }) {
     if (!data || data.length < 2) {
-        return (
-            <div style={{
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.8rem',
-                color: 'var(--text-secondary)',
-                background: 'rgba(0,0,0,0.2)',
-                borderRadius: '8px',
-                border: '1px solid var(--glass-border)'
-            }}>
-                Collecting data...
-            </div>
-        );
+        return <div style={{ height: '120px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Awaiting readings...</div>;
     }
 
-    const width = 280;
-    const height = 60;
-    const padding = 4;
+    const width = 400;
+    const height = 120;
+    const padding = 10;
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1; // avoid division by zero
+    // We want the graph to always show the reference line, so we include it in the bounds
+    const allVals = [...data, reference];
+    const min = Math.min(...allVals);
+    const max = Math.max(...allVals);
+    const range = max - min || 1;
+
+    const getY = (val) => height - padding - ((val - min) / range) * (height - 2 * padding);
 
     const points = data.map((val, i) => {
         const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
-        const y = height - padding - ((val - min) / range) * (height - 2 * padding);
+        const y = getY(val);
         return `${x},${y}`;
     });
 
     const polyline = points.join(' ');
-    // Fill area: close path along the bottom
-    const fillPath = `${points.join(' ')} ${width - padding},${height - padding} ${padding},${height - padding}`;
+    const refY = getY(reference);
 
     return (
-        <div style={{
-            background: 'rgba(0,0,0,0.2)',
-            borderRadius: '8px',
-            border: '1px solid var(--glass-border)',
-            padding: '0.25rem',
-            overflow: 'hidden'
-        }}>
-            <svg
-                viewBox={`0 0 ${width} ${height}`}
-                width="100%"
-                height="60"
-                preserveAspectRatio="none"
-                style={{ display: 'block' }}
-            >
-                <defs>
-                    <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--accent-purple)" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="var(--accent-purple)" stopOpacity="0.05" />
-                    </linearGradient>
-                </defs>
-                {/* Filled area */}
-                <polygon
-                    points={fillPath}
-                    fill="url(#sparkFill)"
-                />
-                {/* Line */}
-                <polyline
-                    points={polyline}
-                    fill="none"
-                    stroke="var(--accent-purple)"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                />
-                {/* Current value dot */}
-                {(() => {
-                    const lastPoint = points[points.length - 1].split(',');
-                    return (
-                        <circle
-                            cx={lastPoint[0]}
-                            cy={lastPoint[1]}
-                            r="3"
-                            fill="var(--accent-purple)"
-                            style={{ filter: 'drop-shadow(0 0 4px rgba(139, 92, 246, 0.6))' }}
-                        />
-                    );
-                })()}
-            </svg>
-        </div>
+        <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="120" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id="absFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--accent-purple)" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="var(--accent-purple)" stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            
+            {/* Reference Dash Line */}
+            <line 
+                x1={padding} y1={refY} x2={width - padding} y2={refY} 
+                stroke="var(--accent-teal)" 
+                strokeWidth="1" 
+                strokeDasharray="4 4" 
+                opacity="0.6"
+            />
+
+            {/* Area Fill */}
+            <polygon
+                points={`${points.join(' ')} ${padding + (data.length - 1) / (data.length-1) * (width-2*padding)},${height-padding} ${padding},${height-padding}`}
+                fill="url(#absFill)"
+                opacity="0.5"
+            />
+
+            {/* Line Path */}
+            <polyline
+                points={polyline}
+                fill="none"
+                stroke="var(--accent-purple)"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+            />
+
+            {/* Current Value Dot */}
+            <circle
+                cx={padding + (data.length - 1) / (data.length - 1) * (width - 2 * padding)}
+                cy={getY(data[data.length - 1])}
+                r="4"
+                fill="var(--accent-purple)"
+                style={{ filter: 'drop-shadow(0 0 5px var(--accent-purple))' }}
+            />
+        </svg>
     );
 }

@@ -18,6 +18,7 @@ import { fetchTelemetry } from '../api';
  * @param {string} title - Chart title
  * @param {string[]} dataKeys - The columns to display as lines
  * @param {string[]} colors - Colors for each line
+ * @param {Object} filter - Optional filter object (e.g. { device_id: 'ADS1115_0x48' })
  * @param {number} historyHours - How many hours of data to show (default 4)
  * @param {number} refreshInterval - Refresh rate in ms (default 10000)
  */
@@ -26,6 +27,7 @@ export default function TelemetryChart({
     title = "Telemetry", 
     dataKeys = ["v0"], 
     colors = ["var(--accent-teal)"],
+    filter = null,
     historyHours = 4,
     refreshInterval = 10000 
 }) {
@@ -44,6 +46,20 @@ export default function TelemetryChart({
 
             if (parsed.errors.length > 0 && parsed.data.length === 0) {
                 throw new Error("Failed to parse CSV data.");
+            }
+
+            // Apply filter if provided
+            let rows = parsed.data;
+            if (filter) {
+                rows = rows.filter(row => {
+                    return Object.entries(filter).every(([key, value]) => {
+                        const rowVal = row[key];
+                        if (typeof rowVal === 'string' && typeof value === 'string') {
+                            return rowVal.toLowerCase() === value.toLowerCase();
+                        }
+                        return rowVal === value;
+                    });
+                });
             }
 
             // Filter for last 4 hours

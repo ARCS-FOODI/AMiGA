@@ -70,8 +70,28 @@ function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className="grid-layout">
               <TelemetryChart 
-                title="Moisture History (T1 & T2)" 
+                title="Soil Nutrients (SIS NPK)" 
+                filename="sis_data.csv" 
+                dataKeys={["nitrogen", "phosphorus", "potassium"]} 
+                colors={["var(--accent-purple)", "var(--accent-orange)", "var(--accent-yellow)"]}
+              />
+              <TelemetryChart 
+                title="Soil Chemistry (SIS)" 
+                filename="sis_data.csv" 
+                dataKeys={["ph", "ec", "temperature"]} 
+                colors={["var(--accent-green)", "var(--accent-blue)", "var(--accent-red)"]}
+              />
+              <TelemetryChart 
+                title="Moisture History (Tray 1)" 
                 filename="sensors.csv" 
+                filter={{ device_id: 'ADS1115_0x48' }}
+                dataKeys={["v0", "v1", "v2", "v3"]} 
+                colors={["var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)"]}
+              />
+              <TelemetryChart 
+                title="Moisture History (Tray 2)" 
+                filename="sensors.csv" 
+                filter={{ device_id: 'ADS1115_0x4b' }}
                 dataKeys={["v0", "v1", "v2", "v3"]} 
                 colors={["var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)"]}
               />

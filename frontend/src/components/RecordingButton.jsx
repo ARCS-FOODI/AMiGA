@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getRecordingStatus, startRecording, stopRecording, getRecipeStatus, API_BASE } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 export default function RecordingButton() {
     const [isRecording, setIsRecording] = useState(false);
@@ -11,13 +12,13 @@ export default function RecordingButton() {
 
     // Frequencies state
     const [freqs, setFreqs] = useState({
-        scale: 5.0,
-        sis: 5.0,
-        sensors: 10.0,
-        co2: 10.0,
-        light: 10.0,
-        light_status: 10.0,
-        pump_status: 5.0
+        scale: 1.0,         // Faster resolution for the scale
+        sis: 2.0,           // Sync with UI 0.5Hz
+        sensors: 2.0,       // Sync with UI 0.5Hz
+        co2: 5.0,           // Environment changes slower but 10s was too slow
+        light: 5.0,         // Sync with UI 
+        light_status: 2.5,  // Sync with POLL_INTERVALS.STATUS
+        pump_status: 2.5    // Sync with POLL_INTERVALS.STATUS
     });
 
     const fetchStatus = async () => {
@@ -47,7 +48,7 @@ export default function RecordingButton() {
         }
 
         // Auto poll status
-        const interval = setInterval(fetchStatus, 5000);
+        const interval = setInterval(fetchStatus, POLL_INTERVALS.STATUS);
         return () => clearInterval(interval);
     }, []);
 

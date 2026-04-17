@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import Papa from 'papaparse';
 import { fetchTelemetry } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 /**
  * TelemetryChart - A reusable chart component that fetches and parses CSV data.
@@ -31,7 +32,7 @@ export default function TelemetryChart({
     filter = null,
     isComparative = false,
     historyHours = 4,
-    refreshInterval = 10000 
+    refreshInterval = POLL_INTERVALS.CHART 
 }) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);

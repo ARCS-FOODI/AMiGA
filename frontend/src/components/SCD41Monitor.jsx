@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { snapshotSCD41 } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 // ─── Arc Gauge — pure SVG ────────────────────────────────────────────────────
 // Opens 7-o'clock → 5-o'clock (225°→135° CW from top), sweeping 270° through 12.
@@ -152,7 +153,7 @@ export default function SCD41Monitor({ title = "Environmental Condition (SCD41)"
 
     useEffect(() => {
         pollSensor();
-        const interval = setInterval(pollSensor, 10000);
+        const interval = setInterval(pollSensor, POLL_INTERVALS.NORMAL);
         return () => clearInterval(interval);
     }, []);
 
@@ -181,6 +182,9 @@ export default function SCD41Monitor({ title = "Environmental Condition (SCD41)"
                         boxShadow: '0 0 8px var(--accent-blue)',
                     }} />
                     <h3 style={{ margin: 0 }}>☁️ {title}</h3>
+                    <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-secondary)' }}>
+                        LIVE 0.5Hz
+                    </span>
                     {data?.simulated && (
                         <span style={{
                             fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '20px',

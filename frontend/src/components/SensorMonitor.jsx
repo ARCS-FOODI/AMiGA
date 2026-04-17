@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { snapshotSensors } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // Capacitive soil sensor: ~3.3V = dry (0%), ~1.0V = saturated (100%)
@@ -114,7 +115,7 @@ export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48 }) {
 
     useEffect(() => {
         pollSensors();
-        const interval = setInterval(pollSensors, 10000);
+        const interval = setInterval(pollSensors, POLL_INTERVALS.NORMAL);
         return () => clearInterval(interval);
     }, []);
 
@@ -146,7 +147,12 @@ export default function SensorMonitor({ title = "Soil Sensors", addr = 0x48 }) {
         }}>
             {/* ── Header ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>🌡️ {title}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                    <h3 style={{ margin: 0 }}>🌡️ {title}</h3>
+                    <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-secondary)' }}>
+                        LIVE 0.5Hz
+                    </span>
+                </div>
                 <button onClick={pollSensors} disabled={loading} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                     {loading ? 'Polling...' : 'Poll Now'}
                 </button>

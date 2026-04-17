@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { runPumpMl, runPumpSeconds, getPumpsStatus } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)', hoverBase = '#3b82f6' }) {
     const [ml, setMl] = useState('50');
@@ -34,7 +35,7 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
             } catch(e) {}
         }
         checkLock();
-        const interval = setInterval(checkLock, 5000);
+        const interval = setInterval(checkLock, POLL_INTERVALS.STATUS);
         window.addEventListener('amiga-refresh-sensors', checkLock);
         return () => {
             clearInterval(interval);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getRecipe, getRecipeStatus, saveRecipe, getRecipeTemplate } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 export default function RecipeManager() {
     const [recipe, setRecipe] = useState(null);
@@ -11,7 +12,7 @@ export default function RecipeManager() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchStatus, 5000);
+        const interval = setInterval(fetchStatus, POLL_INTERVALS.STATUS);
         return () => clearInterval(interval);
     }, []);
 

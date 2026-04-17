@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { snapshotSIS } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 // ─── Arc Gauge (same geometry as SCD41Monitor) ────────────────────────────────
 function ArcGauge({ value, min = 0, max, unit, label, size = 130, zones }) {
@@ -229,7 +230,7 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
         const routine = async () => {
             if (!isMounted) return;
             await pollSensor();
-            if (isMounted) timeoutId = setTimeout(routine, 10000);
+            if (isMounted) timeoutId = setTimeout(routine, POLL_INTERVALS.NORMAL);
         };
         routine();
         return () => { isMounted = false; clearTimeout(timeoutId); };
@@ -258,6 +259,9 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
                         boxShadow: '0 0 8px var(--accent-green)',
                     }} />
                     <h3 style={{ margin: 0 }}>🌱 {title}</h3>
+                    <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-secondary)' }}>
+                        LIVE 0.5Hz
+                    </span>
                     {data?.simulated && (
                         <span style={{
                             fontSize: '0.65rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '20px',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { stopAllPumps, unlockAllPumps, getPumpsStatus } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 export default function PumpEmergencyControl() {
     const [locked, setLocked] = useState(false);
@@ -17,7 +18,7 @@ export default function PumpEmergencyControl() {
 
     useEffect(() => {
         checkStatus();
-        const interval = setInterval(checkStatus, 3000);
+        const interval = setInterval(checkStatus, POLL_INTERVALS.STATUS);
 
         const handleRefresh = () => checkStatus();
         window.addEventListener('amiga-refresh-sensors', handleRefresh);

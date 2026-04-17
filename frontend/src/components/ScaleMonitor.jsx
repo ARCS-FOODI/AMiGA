@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { getScaleWeight } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 // Polling interval in ms
-const POLL_INTERVAL_MS = 1000;
 const HISTORY_LENGTH = 30;
 
 // Compute trend arrow from recent history
@@ -60,7 +60,7 @@ export default function ScaleMonitor() {
 
     useEffect(() => {
         pollLiveScale();
-        const liveInterval = setInterval(pollLiveScale, POLL_INTERVAL_MS);
+        const liveInterval = setInterval(pollLiveScale, POLL_INTERVALS.FAST);
         return () => clearInterval(liveInterval);
     }, []);
 
@@ -92,7 +92,7 @@ export default function ScaleMonitor() {
                             color: 'var(--text-secondary)'
                         }}
                     >
-                        LIVE 1Hz
+                        LIVE 2Hz
                     </span>
                 </div>
                 <div className={`status-indicator ${absoluteWeight !== null && !error ? 'status-online' : 'status-neutral'}`}></div>

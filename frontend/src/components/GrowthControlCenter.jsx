@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getRecipe, getRecipeStatus, saveRecipe, startRecording, getRecordingStatus, stopRecording, stopCycle, getHealth } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 export default function GrowthControlCenter() {
     const [status,   setStatus]   = useState(null);
@@ -10,7 +11,7 @@ export default function GrowthControlCenter() {
 
     useEffect(() => {
         fetchStatus();
-        const interval = setInterval(fetchStatus, 5000);
+        const interval = setInterval(fetchStatus, POLL_INTERVALS.STATUS);
         return () => clearInterval(interval);
     }, []);
 

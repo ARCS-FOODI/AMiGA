@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getLightConfig, toggleLight, setLightConfig } from '../api';
+import { POLL_INTERVALS } from '../polling';
 
 export default function LightControl() {
     const [config, setConfig] = useState(null);
@@ -20,7 +21,7 @@ export default function LightControl() {
 
     useEffect(() => {
         refreshLight();
-        const interval = setInterval(refreshLight, 5000); // polling for external schedule flips
+        const interval = setInterval(refreshLight, POLL_INTERVALS.STATUS); // polling for external schedule flips
         return () => clearInterval(interval);
     }, [loading]);
 

@@ -12,6 +12,7 @@ import RecipeManager from './components/RecipeManager'
 import GrowthControlCenter from './components/GrowthControlCenter'
 import ScaleMonitor from './components/ScaleMonitor'
 import RecordingButton from './components/RecordingButton'
+import GrafanaPanel from './components/GrafanaPanel'
 
 function App() {
   return (
@@ -53,6 +54,12 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">Grow Trays & Payload</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <GrafanaPanel 
+              title="Moisture History (Grafana)" 
+              src="http://localhost:3000/d-solo/ad6tm2x/amiga?orgId=1&from=1776434278343&to=1776434578343&timezone=browser&var-datasource0=&refresh=auto&panelId=panel-5"
+              height="260px"
+              dashboardUrl="http://localhost:3000/d/ad6tm2x/amiga?orgId=1"
+            />
             <SISMonitor title="Main Grow Area SIS" />
             <div className="grid-layout">
               <SensorMonitor title="Tray 1 Sensors" addr={0x48} />

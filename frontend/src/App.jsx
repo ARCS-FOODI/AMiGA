@@ -68,18 +68,6 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">Grow Trays & Payload</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <TelemetryChart 
-                title="Comparative Moisture History (Matrix)" 
-                filename="sensors.csv" 
-                isComparative={true}
-                dataKeys={["v0", "v1", "v2", "v3"]} 
-                colors={[
-                  "var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)",
-                  "var(--accent-orange)", "var(--accent-yellow)", "#f43f5e", "#d946ef"
-                ]}
-              />
-            </div>
             <div className="grid-layout">
               <TelemetryChart 
                 title="Soil Nutrients (SIS NPK)" 

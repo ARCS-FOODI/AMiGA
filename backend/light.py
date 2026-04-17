@@ -18,6 +18,13 @@ else:
         def gpio_write(self, handle, pin, level): pass
     lgpio = MockLgpio()
 
+_callbacks = []
+
+def register_callback(callback):
+    """Register a function to be called when light state changes: cb(on: bool)"""
+    if callback not in _callbacks:
+        _callbacks.append(callback)
+
 
 class GrowLight:
     """
@@ -65,6 +72,13 @@ class GrowLight:
             lgpio.gpio_write(self._handle, self.pin, level)
             self.is_on = on
             if SIMULATE_GPIO: print(f"[MOCK] GrowLight toggled: {'ON' if on else 'OFF'}")
+            
+            # Trigger callbacks
+            for cb in _callbacks:
+                try:
+                    cb(on)
+                except Exception as e:
+                    print(f"[LIGHT] Telemetry callback error: {e}")
 
         return {"light_pin": self.pin, "on": self.is_on}
 

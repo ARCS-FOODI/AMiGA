@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 from datetime import datetime
 from . import sensors
+from .settings import SENSOR_ADDRS
 
 _thread: threading.Thread | None = None
 _stop_flag = threading.Event()
@@ -16,33 +17,40 @@ _device_name = "ADS1115_Array"
 def _tick() -> None:
     if not _session_dir:
         return
-    try:
-        data = sensors.manager.main_array.snapshot(samples=1, interval=0.0)
-        readings = data.get("readings", [])
-        if not readings:
-            return
+    
+    # Debug: log the addresses we are about to poll
+    # print(f"[SENSORS_TELEMETRY] Polling sensor addresses: {SENSOR_ADDRS}")
+    
+    for addr in SENSOR_ADDRS:
+        try:
+            data = sensors.manager.main_array.snapshot(addr=addr, samples=1, interval=0.0)
+            device_id = data.get("device_id", f"Unknown_0x{addr:02x}")
+            readings = data.get("readings", [])
             
-        volts = readings[0].get("voltages", [None]*4)
-        now_iso = datetime.now().astimezone().isoformat()
-        
-        file_path = _session_dir / "sensors.csv"
-        file_exists = file_path.exists()
-        
-        with file_path.open("a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(["time", "device_name", "v0", "v1", "v2", "v3"])
-            writer.writerow([
-                now_iso, 
-                _device_name, 
-                round(volts[0], 4) if volts[0] is not None else "",
-                round(volts[1], 4) if volts[1] is not None else "",
-                round(volts[2], 4) if volts[2] is not None else "",
-                round(volts[3], 4) if volts[3] is not None else ""
-            ])
+            if not readings:
+                print(f"[SENSORS_TELEMETRY] No readings returned for address 0x{addr:02x}")
+                continue
+                
+            volts = readings[0].get("voltages", [None]*4)
+            now_iso = datetime.now().astimezone().isoformat()
             
-    except Exception as e:
-        print(f"[SENSORS_TELEMETRY] Failed to read or write data: {e}")
+            file_path = _session_dir / "sensors.csv"
+            file_exists = file_path.exists()
+            
+            with file_path.open("a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(["time", "device_id", "v0", "v1", "v2", "v3"])
+                writer.writerow([
+                    now_iso, 
+                    device_id, 
+                    round(volts[0], 4) if volts[0] is not None else "",
+                    round(volts[1], 4) if volts[1] is not None else "",
+                    round(volts[2], 4) if volts[2] is not None else "",
+                    round(volts[3], 4) if volts[3] is not None else ""
+                ])
+        except Exception as e:
+            print(f"[SENSORS_TELEMETRY] Failed to read or write data for 0x{addr:02x}: {e}")
 
 def _run_forever() -> None:
     print(f"[SENSORS_TELEMETRY] Started sensors telemetry thread. Saving to: {_session_dir}")

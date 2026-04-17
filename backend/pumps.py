@@ -18,6 +18,13 @@ else:
         def gpio_write(self, handle, pin, level): pass
     lgpio = MockLgpio()
 
+_on_dispense_callbacks = []
+
+def register_on_dispense_callback(callback):
+    """Register a function to be called when a pump finishes dispensing: cb(data: dict)"""
+    if callback not in _on_dispense_callbacks:
+        _on_dispense_callbacks.append(callback)
+
 
 class StepperPump:
     """
@@ -97,6 +104,14 @@ class StepperPump:
             write(self._handle, sp, 0)
             time.sleep(half)
 
+    def _trigger_dispense_callbacks(self, result: Dict[str, Any]) -> None:
+        """Helper to fire callbacks with dispensed data."""
+        for cb in _on_dispense_callbacks:
+            try:
+                cb(result)
+            except Exception as e:
+                print(f"[PUMP] Telemetry callback error: {e}")
+
     def run_for_seconds(
         self, 
         seconds: float, 
@@ -125,15 +140,21 @@ class StepperPump:
             manager.request_enable_driver(False)
             self._lock.release()
 
-
-
-        return {
+        result = {
             "pump": self.name,
             "seconds": seconds,
             "hz": hz,
             "direction": direction,
             "status": "ok",
         }
+        # Note: If called from dispense_ml, this will be triggered there with enriched data.
+        # But for direct path, we trigger here.
+        import traceback
+        frames = traceback.extract_stack()
+        if not any(f.name == "dispense_ml" for f in frames):
+            self._trigger_dispense_callbacks(result)
+            
+        return result
 
     def dispense_ml(
         self, 
@@ -152,7 +173,7 @@ class StepperPump:
 
         seconds = ml / self.calibration_rate
         
-        # Hand off to standard run function for execution and logging
+        # Hand off to standard run function for execution
         result = self.run_for_seconds(seconds, hz, direction)
         
         # Override the log and return values to reflect a volume-based run
@@ -167,16 +188,14 @@ class StepperPump:
         except Exception as e:
             print(f"[SCALE] Failed to add water weight: {e}")
         
-
+        self._trigger_dispense_callbacks(result)
             
         return result
 
     def calibrate(self, run_seconds: float, hz: float = DEFAULT_HZ) -> Dict[str, Any]:
         """Run pump for fixed time for manual volume measurement."""
-        self.run_for_seconds(run_seconds, hz, DEFAULT_DIR)
+        result = self.run_for_seconds(run_seconds, hz, DEFAULT_DIR)
         
-
-
         return {
             "pump": self.name,
             "run_seconds": run_seconds,
@@ -233,7 +252,6 @@ class PumpManager:
         self._handle = lgpio.gpiochip_open(self.chip_index)
 
         for pump in self.pumps.values():
-            pump.initialize(self._handle)
             pump.initialize(self._handle)
 
     def shutdown(self) -> None:
@@ -310,19 +328,15 @@ class PumpManager:
             "direction": direction,
             "status": "ok",
         }
-
-
+        # Multi-pump events use a special pump name "multi:{names}"
+        result["pump"] = f"multi:{','.join(pump_names)}"
+        _trigger_dispense_callbacks(result)
 
         return result
 
 
-# Global singleton for procedural API endpoints to wrap around if needed
-# though ideally api.py uses it directly via state.
+# Global singleton
 manager = PumpManager()
-
-# --- Legacy Procedural Wrappers (For backward compatibility with api.py / control.py if not fully migrated) ---
-# It is highly recommended to update 'api.py' and 'control.py' to use `manager` directly, 
-# but these wrappers ensure nothing completely breaks.
 
 def _ensure_manager_started():
     if manager._handle is None:

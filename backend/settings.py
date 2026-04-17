@@ -19,6 +19,7 @@ CHIP = 0  # usually /dev/gpiochip0
 LIGHT_PIN = 23
 # Sensor defaults
 DEFAULT_ADDR   = 0x48
+SENSOR_ADDRS   = [0x48, 0x49]
 DEFAULT_GAIN   = 2/3        # ±6.144 V (Required to safely read 5V signals)
 DEFAULT_AVG    = 5
 DEFAULT_INTSEC = 1.0

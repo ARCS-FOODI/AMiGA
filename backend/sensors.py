@@ -45,7 +45,9 @@ else:
     class MockI2C:
         def __init__(self, *args, **kwargs): pass
     class MockADS: 
-        def __init__(self, *args, **kwargs): self.gain = 1
+        def __init__(self, i2c_bus, address=0x48, **kwargs):
+            self.address = address
+            self.gain = 1
     class MockAnalogIn:
         def __init__(self, ads, chan):
             self._voltage = random.uniform(0.5, 3.2)
@@ -61,7 +63,11 @@ else:
         def gpio_claim_input(self, handle, pin): pass
         def gpio_read(self, handle, pin): return 1 # 1 = Dry
 
-    board = type("board", (), {"SCL": 1, "SDA": 2, "I2C": lambda *a, **k: None})
+    board = type("board", (), {
+        "SCL": 1, 
+        "SDA": 2, 
+        "I2C": lambda *a, **k: MockI2C()
+    })
     busio = type("busio", (), {"I2C": MockI2C})
     ADS = type("ADS", (), {"ADS1115": MockADS})
     AnalogIn = MockAnalogIn
@@ -105,9 +111,11 @@ class SensorArray:
                 lgpio.gpio_claim_input(self._handle, self.do_pin)
 
     def _ensure_adc(self, addr, gain):
-        if not self._i2c:
+        if self._i2c is None:
             self._i2c = board.I2C()
+            
         if addr not in self._ads_dict:
+            # For real hardware, address matters. For mock, we'll store it by address too.
             ads = ADS.ADS1115(self._i2c, address=addr)
             ads.gain = gain
             self._ads_dict[addr] = ads
@@ -170,11 +178,11 @@ class SensorArray:
                     }
                 )
 
-                # Removed _log_sensor_data_wide(...) decoupling API read from CSV save
                 if i < samples:
                     time.sleep(interval)
 
         return {
+            "device_id": f"ADS1115_0x{req_addr:02x}",
             "addr": req_addr,
             "gain": req_gain,
             "readings": readings,

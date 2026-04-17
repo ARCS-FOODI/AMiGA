@@ -1,6 +1,7 @@
 # backend/sis.py
 import time
 import random
+import threading
 from typing import Dict, Any
 from .settings import DEFAULT_SIS_PORT, DEFAULT_SIS_SLAVE_ID, SIMULATE_GPIO
 
@@ -17,6 +18,7 @@ class SoilIntegratedSensor:
         self.port = port
         self.slave_id = slave_id
         self.instrument = None
+        self._lock = threading.Lock()
         
         if not SIMULATE_GPIO and minimalmodbus:
             try:
@@ -44,33 +46,34 @@ class SoilIntegratedSensor:
         if not self.instrument:
             raise RuntimeError("SIS Hardware not initialized (check PORT and SLAVE_ID)")
 
-        try:
-            # Read registers as per test_npk_sensor.py
-            ph = self.instrument.read_register(6, functioncode=3) / 100.0
-            moisture = self.instrument.read_register(18, functioncode=3) / 10.0
-            temperature = self.instrument.read_register(19, functioncode=3, signed=True) / 10.0
-            ec = self.instrument.read_register(21, functioncode=3)
-            nitrogen = self.instrument.read_register(30, functioncode=3)
-            phosphorus = self.instrument.read_register(31, functioncode=3)
-            potassium = self.instrument.read_register(32, functioncode=3)
-            ts = time.strftime('%Y-%m-%d %H:%M:%S')
+        with self._lock:
+            try:
+                # Read registers as per test_npk_sensor.py
+                ph = self.instrument.read_register(6, functioncode=3) / 100.0
+                moisture = self.instrument.read_register(18, functioncode=3) / 10.0
+                temperature = self.instrument.read_register(19, functioncode=3, signed=True) / 10.0
+                ec = self.instrument.read_register(21, functioncode=3)
+                nitrogen = self.instrument.read_register(30, functioncode=3)
+                phosphorus = self.instrument.read_register(31, functioncode=3)
+                potassium = self.instrument.read_register(32, functioncode=3)
+                ts = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            data = {
-                "ph": ph,
-                "moisture": moisture,
-                "temperature": temperature,
-                "ec": ec,
-                "nitrogen": nitrogen,
-                "phosphorus": phosphorus,
-                "potassium": potassium,
-                "timestamp": ts,
-                "simulated": False
-            }
+                data = {
+                    "ph": ph,
+                    "moisture": moisture,
+                    "temperature": temperature,
+                    "ec": ec,
+                    "nitrogen": nitrogen,
+                    "phosphorus": phosphorus,
+                    "potassium": potassium,
+                    "timestamp": ts,
+                    "simulated": False
+                }
 
-            return data
+                return data
 
-        except Exception as e:
-            raise RuntimeError(f"Failed to read SIS sensor: {e}")
+            except Exception as e:
+                raise RuntimeError(f"Failed to read SIS sensor: {e}")
 
 # Global singleton
 manager = SoilIntegratedSensor()

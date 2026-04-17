@@ -87,3 +87,20 @@ def api_set_calibration(req: PumpCalibrationUpdate):
         return config_store.set_pump_calibration(req.pump, req.ml_per_sec)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/stop-all")
+def api_stop_all_pumps():
+    pump_manager.set_emergency_stop(True)
+    return {"status": "ok", "message": "Emergency Stop Active", "locked": True}
+
+@router.post("/unlock-all")
+def api_unlock_all_pumps():
+    pump_manager.set_emergency_stop(False)
+    return {"status": "ok", "message": "Pumps Unlocked", "locked": False}
+
+@router.get("/status")
+def api_get_pumps_status():
+    return {
+        "locked": pump_manager.emergency_stop_active,
+        "running_pumps": [p for p, obj in pump_manager.pumps.items() if obj.is_running]
+    }

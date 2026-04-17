@@ -248,3 +248,4 @@ data/sensors.csv
 data/records/
 data/current_recipe.json
 data/scheduler_state.json
+backend/data/scale_state.tmp

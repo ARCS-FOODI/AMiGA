@@ -25,9 +25,7 @@ function ArcGauge({ value, min = 0, max, unit, label, size = 130, zones }) {
 
     let color = '#10b981';
     if (zones && value != null) {
-        for (const z of zones) {
-            if (value <= z.max) { color = z.color; break; }
-        }
+        for (const z of zones) { if (value <= z.max) { color = z.color; break; } }
     }
 
     const displayVal = value != null
@@ -43,22 +41,19 @@ function ArcGauge({ value, min = 0, max, unit, label, size = 130, zones }) {
         >
             <path d={arc(START, BG_END)} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={sw} strokeLinecap="round" />
             {value != null && pct > 0.001 && (
-                <path
-                    d={arc(START, valDeg)}
-                    fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round"
-                    style={{ filter: `drop-shadow(0 0 6px ${color}bb)`, transition: 'stroke 0.5s ease' }}
-                />
+                <path d={arc(START, valDeg)} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round"
+                    style={{ filter: `drop-shadow(0 0 6px ${color}cc)`, transition: 'stroke 0.5s ease' }} />
             )}
             <text x={cx} y={cy + 4} textAnchor="middle" fill="white"
                 fontSize={size * 0.175} fontWeight="bold" fontFamily="monospace">
                 {displayVal}
             </text>
-            <text x={cx} y={cy + size * 0.145} textAnchor="middle"
-                fill="rgba(255,255,255,0.4)" fontSize={size * 0.096} fontFamily="Inter, sans-serif">
+            <text x={cx} y={cy + size * 0.148} textAnchor="middle"
+                fill="rgba(255,255,255,0.42)" fontSize={size * 0.096} fontFamily="Inter, sans-serif">
                 {unit}
             </text>
-            <text x={cx} y={Math.round(size * 0.77)} textAnchor="middle"
-                fill="rgba(255,255,255,0.28)" fontSize={size * 0.086} fontFamily="Inter, sans-serif">
+            <text x={cx} y={Math.round(size * 0.78)} textAnchor="middle"
+                fill="rgba(255,255,255,0.26)" fontSize={size * 0.085} fontFamily="Inter, sans-serif">
                 {label}
             </text>
         </svg>
@@ -75,7 +70,6 @@ function NPKBar({ label, value, max, color, unit = 'mg/kg' }) {
                 fontSize: '0.82rem', fontWeight: 'bold',
                 color, fontFamily: 'monospace', flexShrink: 0,
             }}>{label}</span>
-
             <div style={{
                 flex: 1, position: 'relative', height: '13px',
                 background: 'rgba(0,0,0,0.35)', borderRadius: '7px',
@@ -83,14 +77,11 @@ function NPKBar({ label, value, max, color, unit = 'mg/kg' }) {
             }}>
                 <div style={{
                     position: 'absolute', top: 0, left: 0, height: '100%',
-                    width: `${pct}%`,
-                    background: color,
-                    borderRadius: '7px',
-                    transition: 'width 0.9s ease',
+                    width: `${pct}%`, background: color,
+                    borderRadius: '7px', transition: 'width 0.9s ease',
                     boxShadow: `0 0 8px ${color}80`,
                 }} />
             </div>
-
             <span style={{
                 width: '90px', textAlign: 'right', flexShrink: 0,
                 fontFamily: 'monospace', fontSize: '0.82rem',
@@ -114,8 +105,8 @@ function ZoneDot({ value, zones }) {
     );
 }
 
-// ─── Metric tile with zone dot ────────────────────────────────────────────────
-function MetricTile({ label, value, unit, zones }) {
+// ─── Metric tile (optional alt unit display) ──────────────────────────────────
+function MetricTile({ label, value, unit, zones, subValue }) {
     const displayVal = value != null
         ? (typeof value === 'number' ? value.toFixed(1) : value)
         : '--';
@@ -126,7 +117,7 @@ function MetricTile({ label, value, unit, zones }) {
             background: 'rgba(255,255,255,0.04)',
             padding: '0.7rem', borderRadius: '8px',
             border: '1px solid rgba(255,255,255,0.06)',
-            gap: '0.3rem',
+            gap: '0.25rem',
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {zones && <ZoneDot value={value} zones={zones} />}
@@ -141,6 +132,12 @@ function MetricTile({ label, value, unit, zones }) {
                 </span>
                 <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.38)' }}>{unit}</span>
             </div>
+            {/* Optional secondary unit (e.g. °F) */}
+            {subValue != null && (
+                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)', marginTop: '1px' }}>
+                    {subValue}
+                </div>
+            )}
         </div>
     );
 }
@@ -154,6 +151,28 @@ const LegendRow = ({ items }) => (
                 {z.label}
             </div>
         ))}
+    </div>
+);
+
+// ─── °C / °F segmented toggle ────────────────────────────────────────────────
+const UnitToggle = ({ useFahrenheit, onToggle }) => (
+    <div style={{
+        display: 'inline-flex', borderRadius: '20px',
+        background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+        overflow: 'hidden',
+    }}>
+        {['°C', '°F'].map((u) => {
+            const active = (u === '°F') === useFahrenheit;
+            return (
+                <button key={u} onClick={onToggle} style={{
+                    padding: '3px 10px', border: 'none', cursor: 'pointer',
+                    background: active ? 'rgba(14,165,233,0.3)' : 'transparent',
+                    color: active ? '#38bdf8' : 'rgba(255,255,255,0.35)',
+                    fontFamily: 'monospace', fontWeight: 'bold', fontSize: '0.66rem',
+                    transition: 'all 0.2s ease',
+                }}>{u}</button>
+            );
+        })}
     </div>
 );
 
@@ -172,7 +191,7 @@ const MOISTURE_ZONES = [
     { max: Infinity, color: '#0ea5e9' },
 ];
 
-const TEMP_ZONES = [
+const TEMP_ZONES_C = [
     { max: 15,       color: '#0ea5e9' },
     { max: 28,       color: '#10b981' },
     { max: Infinity, color: '#ef4444' },
@@ -186,9 +205,10 @@ const EC_ZONES = [
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", port = null, slaveId = null }) {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [data,          setData]       = useState(null);
+    const [loading,       setLoading]    = useState(false);
+    const [error,         setError]      = useState(null);
+    const [useFahrenheit, setFahrenheit] = useState(false);
 
     const pollSensor = async () => {
         setLoading(true);
@@ -215,10 +235,22 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
         return () => { isMounted = false; clearTimeout(timeoutId); };
     }, []);
 
+    // Temperature conversion helpers
+    const tempC = data?.temperature;
+    const tempF = tempC != null ? +(tempC * 9 / 5 + 32).toFixed(1) : null;
+
+    // Build temperature display based on toggle
+    const tempDisplayVal  = useFahrenheit ? tempF   : tempC;
+    const tempDisplayUnit = useFahrenheit ? '°F'    : '°C';
+    const tempSubValue    = useFahrenheit
+        ? (tempC  != null ? `${tempC.toFixed(1)} °C`     : null)
+        : (tempF  != null ? `${tempF.toFixed(1)} °F`     : null);
+
     return (
         <div className="glass-card" style={{ gridColumn: 'span 2' }}>
+
             {/* ── Header ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                     <div style={{
                         width: '10px', height: '10px', borderRadius: '50%',
@@ -234,9 +266,12 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
                         }}>SIMULATED</span>
                     )}
                 </div>
-                <button onClick={pollSensor} disabled={loading} className="btn-secondary">
-                    {loading ? 'Reading...' : 'Refresh'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                    <UnitToggle useFahrenheit={useFahrenheit} onToggle={() => setFahrenheit(f => !f)} />
+                    <button onClick={pollSensor} disabled={loading} className="btn-secondary">
+                        {loading ? 'Reading...' : 'Refresh'}
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -252,7 +287,7 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
                         value={data?.ph}
                         min={4} max={9}
                         unit="pH" label="Acidity"
-                        size={135}
+                        size={148}
                         zones={PH_ZONES}
                     />
                     <LegendRow items={[
@@ -270,9 +305,25 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
                     gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
                     gap: '0.7rem', minWidth: '220px',
                 }}>
-                    <MetricTile label="Moisture"    value={data?.moisture}    unit="%"     zones={MOISTURE_ZONES} />
-                    <MetricTile label="Temperature" value={data?.temperature} unit="°C"    zones={TEMP_ZONES} />
-                    <MetricTile label="Conductivity" value={data?.ec}          unit="μS/cm" zones={EC_ZONES} />
+                    <MetricTile
+                        label="Moisture"
+                        value={data?.moisture}
+                        unit="%"
+                        zones={MOISTURE_ZONES}
+                    />
+                    <MetricTile
+                        label="Temperature"
+                        value={tempDisplayVal}
+                        unit={tempDisplayUnit}
+                        zones={TEMP_ZONES_C}
+                        subValue={tempSubValue}
+                    />
+                    <MetricTile
+                        label="Conductivity"
+                        value={data?.ec}
+                        unit="μS/cm"
+                        zones={EC_ZONES}
+                    />
                 </div>
             </div>
 

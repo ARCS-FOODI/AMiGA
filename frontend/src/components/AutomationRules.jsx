@@ -30,7 +30,7 @@ export default function AutomationRules() {
     return (
         <div className="glass-card" style={{ gridColumn: '1 / -1' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3>⚙️ Automation Console</h3>
+                <h3>⚙️ Recipe Manager</h3>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>

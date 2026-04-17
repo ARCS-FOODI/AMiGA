@@ -4,7 +4,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from typing import Dict, Any
 
-from ...grow_scheduler import get_recipe, set_recipe, get_grow_status
+from ...grow_scheduler import get_recipe, set_recipe, get_grow_status, stop_cycle
 
 router = APIRouter(prefix="/recipe", tags=["recipe"])
 
@@ -16,6 +16,14 @@ def api_get_recipe():
 def api_save_recipe(recipe: Dict[str, Any]):
     try:
         set_recipe(recipe)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/stop")
+def api_stop_cycle():
+    try:
+        stop_cycle()
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

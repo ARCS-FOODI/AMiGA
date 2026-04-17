@@ -49,8 +49,13 @@ def set_recipe(recipe: Dict[str, Any]) -> None:
         tz = ZoneInfo(TZ_NAME)
         recipe["created_at"] = datetime.now(tz).isoformat()
     _write_json_atomic(RECIPE_FILE, recipe)
-    # Reset internal tracking state on new recipe
-    _write_json_atomic(SCHED_STATE_FILE, {"last_fluid_ts": 0})
+    # Reset internal tracking state on new recipe and set running: True
+    _write_json_atomic(SCHED_STATE_FILE, {"last_fluid_ts": 0, "running": True})
+
+def stop_cycle() -> None:
+    state = _read_json(SCHED_STATE_FILE, default={"last_fluid_ts": 0, "running": False})
+    state["running"] = False
+    _write_json_atomic(SCHED_STATE_FILE, state)
 
 def get_grow_status() -> Dict[str, Any]:
     recipe = get_recipe()
@@ -75,13 +80,21 @@ def get_grow_status() -> Dict[str, Any]:
             active_phase = phase
             break
 
-    state = _read_json(SCHED_STATE_FILE, default={"last_fluid_ts": 0})
-    
+    # Calculate total duration
+    phases = recipe.get("phases", [])
+    total_days = max((p.get("day_end", 0) for p in phases), default=0)
+
+    state = _read_json(SCHED_STATE_FILE, default={"last_fluid_ts": 0, "running": False})
+    is_running = state.get("running", False)
+
     return {
         "active": _thread is not None and _thread.is_alive(),
+        "is_cycling": (active_phase is not None) and is_running,
         "current_day": current_day,
-        "phase": active_phase,
-        "last_fluid_ts": state.get("last_fluid_ts", 0)
+        "total_days": total_days,
+        "phase": active_phase if is_running else None,
+        "last_fluid_ts": state.get("last_fluid_ts", 0),
+        "created_at": recipe.get("created_at")
     }
 
 def tick() -> None:

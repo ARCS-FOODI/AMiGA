@@ -1,0 +1,25 @@
+from fastapi import APIRouter, HTTPException
+import json
+from pathlib import Path
+from pydantic import BaseModel
+from typing import Dict, Any
+
+from ...grow_scheduler import get_recipe, set_recipe, get_grow_status
+
+router = APIRouter(prefix="/recipe", tags=["recipe"])
+
+@router.get("")
+def api_get_recipe():
+    return get_recipe()
+
+@router.post("")
+def api_save_recipe(recipe: Dict[str, Any]):
+    try:
+        set_recipe(recipe)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/status")
+def api_get_status():
+    return get_grow_status()

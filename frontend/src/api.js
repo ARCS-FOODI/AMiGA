@@ -88,3 +88,12 @@ export const startRecording = (frequencies) =>
         body: JSON.stringify({ frequencies })
     }).then(handleResponse);
 export const stopRecording = () => fetch(`${API_BASE}/recording/stop`, { method: "POST" }).then(handleResponse);
+
+export const getRecipe = () => fetch(`${API_BASE}/recipe`).then(handleResponse);
+export const getRecipeStatus = () => fetch(`${API_BASE}/recipe/status`).then(handleResponse);
+export const saveRecipe = (recipe) => 
+    fetch(`${API_BASE}/recipe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(recipe)
+    }).then(handleResponse);

@@ -8,7 +8,7 @@ import SensorMonitor from './components/SensorMonitor'
 import SISMonitor from './components/SISMonitor'
 import SCD41Monitor from './components/SCD41Monitor'
 import TSL2561Monitor from './components/TSL2561Monitor'
-import AutomationRules from './components/AutomationRules'
+import RecipeManager from './components/RecipeManager'
 import ScaleMonitor from './components/ScaleMonitor'
 import RecordingButton from './components/RecordingButton'
 
@@ -22,7 +22,7 @@ function App() {
           <h2 className="category-header">System & Automation</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <RecordingButton />
-            <AutomationRules />
+            <RecipeManager />
           </div>
         </section>
 

@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=AMiGA Server
+Exec=/home/sensoil/Documents/AMiGA/pi4/scripts/start_amiga.sh
+Terminal=false

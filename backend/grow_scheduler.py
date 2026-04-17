@@ -40,8 +40,54 @@ def _write_json_atomic(path: Path, payload: Dict[str, Any]) -> None:
     tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     tmp.replace(path)
 
+DEFAULT_RECIPE = {
+  "name": "Kale Microgreens",
+  "phases": [
+    {
+      "day_start": 0,
+      "day_end": 3,
+      "name": "Germination (Blackout)",
+      "lighting": {
+        "mode": "off"
+      },
+      "fluid_control": {
+        "pump": "water",
+        "trigger": "moisture",
+        "dry_threshold_v": 2.0,
+        "vote_k": 2,
+        "dose_ml": 50,
+        "hz": 100,
+        "cooldown_minutes": 60
+      }
+    },
+    {
+      "day_start": 3,
+      "day_end": 10,
+      "name": "Light Growth",
+      "lighting": {
+        "mode": "daynight",
+        "on_time": "06:00",
+        "off_time": "20:00"
+      },
+      "fluid_control": {
+        "pump": "food",
+        "trigger": "moisture",
+        "dry_threshold_v": 2.2,
+        "vote_k": 2,
+        "dose_ml": 200,
+        "hz": 120,
+        "cooldown_minutes": 360,
+        "notes": "MaxiGro 10-5-14"
+      }
+    }
+  ]
+}
+
 def get_recipe() -> Dict[str, Any]:
-    return _read_json(RECIPE_FILE, default={})
+    recipe = _read_json(RECIPE_FILE, default={})
+    if not recipe or "phases" not in recipe or not recipe["phases"]:
+        return DEFAULT_RECIPE
+    return recipe
 
 def set_recipe(recipe: Dict[str, Any]) -> None:
     # Ensure created_at is present to track day 0
@@ -144,6 +190,7 @@ def tick() -> None:
             thresh_v = fluid.get("dry_threshold_v", 2.0)
             vk = fluid.get("vote_k", 2)
             dose_ml = fluid.get("dose_ml", 50.0)
+            req_hz = fluid.get("hz", 100.0)
             
             # We don't have an `evaluate_cycle` by ML natively yet, but we can compute seconds or just rely on pump's ml_per_sec natively:
             # Let's read sensors directly here to decide to dose. We can use the controller's logic or do it directly.
@@ -156,9 +203,9 @@ def tick() -> None:
             triggered = over >= vk
             
             if triggered:
-                print(f"[SCHED] Moisture {before_volts} > {thresh_v}V. Dispensing {dose_ml}ml of {pump_name}.")
+                print(f"[SCHED] Moisture {before_volts} > {thresh_v}V. Dispensing {dose_ml}ml of {pump_name} at {req_hz}Hz.")
                 p_obj = pumps.manager.get_pump(pump_name)
-                p_obj.dispense_ml(dose_ml)
+                p_obj.dispense_ml(dose_ml, hz=req_hz)
                 state["last_fluid_ts"] = time.time()
                 _write_json_atomic(SCHED_STATE_FILE, state)
         except Exception as e:

@@ -90,6 +90,7 @@ export const startRecording = (frequencies, recipeName = null) =>
 export const stopRecording = () => fetch(`${API_BASE}/recording/stop`, { method: "POST" }).then(handleResponse);
 
 export const getRecipe = () => fetch(`${API_BASE}/recipe`).then(handleResponse);
+export const getRecipeTemplate = () => fetch(`${API_BASE}/recipe/template`).then(handleResponse);
 export const getRecipeStatus = () => fetch(`${API_BASE}/recipe/status`).then(handleResponse);
 export const stopCycle = () => fetch(`${API_BASE}/recipe/stop`, { method: "POST" }).then(handleResponse);
 export const saveRecipe = (recipe) => 

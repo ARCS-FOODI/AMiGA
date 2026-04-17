@@ -12,6 +12,11 @@ router = APIRouter(prefix="/recipe", tags=["recipe"])
 def api_get_recipe():
     return get_recipe()
 
+@router.get("/template")
+def api_get_template():
+    from ...grow_scheduler import DEFAULT_RECIPE
+    return DEFAULT_RECIPE
+
 @router.post("")
 def api_save_recipe(recipe: Dict[str, Any]):
     try:

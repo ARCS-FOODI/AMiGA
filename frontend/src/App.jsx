@@ -9,6 +9,7 @@ import SISMonitor from './components/SISMonitor'
 import SCD41Monitor from './components/SCD41Monitor'
 import TSL2561Monitor from './components/TSL2561Monitor'
 import RecipeManager from './components/RecipeManager'
+import GrowthControlCenter from './components/GrowthControlCenter'
 import ScaleMonitor from './components/ScaleMonitor'
 import RecordingButton from './components/RecordingButton'
 
@@ -21,6 +22,7 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">System & Automation</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <GrowthControlCenter />
             <RecordingButton />
             <RecipeManager />
           </div>

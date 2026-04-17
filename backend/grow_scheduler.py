@@ -106,10 +106,10 @@ def tick() -> None:
             light.manager.main_light.apply_daynight_now()
         elif l_mode == "off":
             light.manager.main_light.set_config("manual", "00:00", "00:00")
-            light.manager.main_light.channel.off()
+            light.manager.main_light.set_state(False)
         elif l_mode == "on":
             light.manager.main_light.set_config("manual", "00:00", "00:00")
-            light.manager.main_light.channel.on()
+            light.manager.main_light.set_state(True)
 
     # --- 2) Fluid Control Enforcement ---
     fluid = phase.get("fluid_control", {})

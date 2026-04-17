@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getRecipe, getRecipeStatus, saveRecipe, startRecording } from '../api';
+import { getRecipe, getRecipeStatus, saveRecipe, startRecording, getRecordingStatus } from '../api';
 
 export default function RecipeManager() {
     const [recipe, setRecipe] = useState(null);
@@ -7,6 +7,7 @@ export default function RecipeManager() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [recording, setRecording] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -31,7 +32,7 @@ export default function RecipeManager() {
             const sData = await getRecipeStatus();
             setStatus(sData);
         } catch (err) {
-            // silent fail on poll
+            // silent
         }
     };
 
@@ -40,21 +41,6 @@ export default function RecipeManager() {
         setError(null);
         try {
             await saveRecipe(recipe);
-            await fetchData();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleStartCycle = async () => {
-        setSaving(true);
-        setError(null);
-        try {
-            const newRecipe = { ...recipe, created_at: new Date().toISOString() };
-            await saveRecipe(newRecipe);
-            await startRecording({}, newRecipe.name); // Pass empty frequencies to use defaults
             await fetchData();
         } catch (err) {
             setError(err.message);
@@ -72,20 +58,14 @@ export default function RecipeManager() {
 
     return (
         <div className="glass-card" style={{ borderColor: daemonActive ? 'var(--accent-purple)' : 'var(--glass-border)', boxShadow: daemonActive ? '0 0 15px rgba(168, 85, 247, 0.15)' : 'var(--glass-shadow)' }}>
+            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: daemonActive ? 'var(--accent-green)' : 'var(--accent-red)', boxShadow: daemonActive ? '0 0 8px var(--accent-green)' : 'none' }}></div>
-                    <h3 style={{ margin: 0, color: 'var(--accent-purple)' }}>⚙️ Recipe Manager</h3>
+                    <h3 style={{ margin: 0, color: 'var(--accent-purple)' }}>⚙️ Recipe Configurator</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        Day: <strong style={{ color: 'white' }}>{currentDay}</strong> | Phase: <strong style={{ color: 'var(--accent-teal)' }}>{activePhase}</strong>
-                    </span>
                     <button className="primary" onClick={handleSave} disabled={saving} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'var(--glass-border)' }}>
-                        {saving ? 'Saving...' : 'Save Recipe'}
-                    </button>
-                    <button className="primary" onClick={handleStartCycle} disabled={saving} style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', background: 'var(--accent-green)', color: 'black', fontWeight: 'bold', boxShadow: '0 0 15px var(--accent-green)' }}>
-                        ▶ START GROWTH CYCLE
+                        {saving ? 'Saving...' : 'Save Recipe Config'}
                     </button>
                 </div>
             </div>

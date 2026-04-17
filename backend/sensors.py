@@ -170,16 +170,7 @@ class SensorArray:
                     }
                 )
 
-                _log_sensor_data_wide(
-                    device_name="ads1115_array",
-                    ts=ts,
-                    addr=req_addr,
-                    v0=volts[0],
-                    v1=volts[1],
-                    v2=volts[2],
-                    v3=volts[3]
-                )
-
+                # Removed _log_sensor_data_wide(...) decoupling API read from CSV save
                 if i < samples:
                     time.sleep(interval)
 

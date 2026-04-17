@@ -9,6 +9,7 @@ import SCD41Monitor from './components/SCD41Monitor'
 import TSL2561Monitor from './components/TSL2561Monitor'
 import AutomationRules from './components/AutomationRules'
 import ScaleMonitor from './components/ScaleMonitor'
+import RecordingButton from './components/RecordingButton'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
 
       <main className="grid-layout">
         <LightControl />
+        <RecordingButton />
         <PumpControl pumpName="water" colorBase="var(--accent-blue)" hoverBase="#3b82f6" />
         <PumpControl pumpName="food" colorBase="var(--accent-green)" hoverBase="#10b981" />
         <SISMonitor title="Main Grow Area SIS" />

@@ -24,6 +24,16 @@ export default function GrowthControlCenter() {
     };
 
     const handleStartCycle = async () => {
+        if (isCycling) {
+            const confirmed = window.confirm(
+                "⚠️ ATTENTION: A Growth Lifecycle is already ACTIVE.\n\n" +
+                "Restarting will reset the timeline to Day 0 and create a new recording session. " +
+                "All current progress on this cycle's timeline will be reset.\n\n" +
+                "Do you want to proceed with the RESTART?"
+            );
+            if (!confirmed) return;
+        }
+
         setSaving(true);
         setError(null);
         try {
@@ -63,11 +73,11 @@ export default function GrowthControlCenter() {
     const createdAt = status?.created_at;
 
     // Calculate duration since start
-    const [duration, setDuration] = useState("");
+    const [timerData, setTimerData] = useState({ d: 0, h: 0, m: 0 });
 
     useEffect(() => {
         if (!createdAt || !isCycling) {
-            setDuration("");
+            setTimerData({ d: 0, h: 0, m: 0 });
             return;
         }
 
@@ -75,13 +85,13 @@ export default function GrowthControlCenter() {
             const start = new Date(createdAt);
             const now = new Date();
             const diffMs = now - start;
-            if (diffMs < 0) return setDuration("Initializing...");
+            if (diffMs < 0) return;
 
-            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const d = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
             
-            setDuration(`${days}d ${hours}h ${mins}m`);
+            setTimerData({ d, h, m });
         };
 
         updateClock();
@@ -195,10 +205,23 @@ export default function GrowthControlCenter() {
 
                             {/* Session Age */}
                             {isCycling && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cycle Age</span>
-                                    <div style={{ fontSize: '0.9rem', color: 'white', fontWeight: 'bold' }}>
-                                        {duration}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.5rem' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cycle Duration</span>
+                                    <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'baseline' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '1.4rem', color: 'white', fontWeight: '900', fontFamily: 'monospace', letterSpacing: '1px' }}>{timerData.d}</span>
+                                            <span style={{ fontSize: '0.5rem', color: 'var(--accent-teal)', fontWeight: 'bold' }}>DAYS</span>
+                                        </div>
+                                        <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 'bold' }}>:</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '1.4rem', color: 'white', fontWeight: '900', fontFamily: 'monospace', letterSpacing: '1px' }}>{String(timerData.h).padStart(2, '0')}</span>
+                                            <span style={{ fontSize: '0.5rem', color: 'var(--accent-teal)', fontWeight: 'bold' }}>HRS</span>
+                                        </div>
+                                        <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 'bold' }}>:</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '1.4rem', color: 'white', fontWeight: '900', fontFamily: 'monospace', letterSpacing: '1px' }}>{String(timerData.m).padStart(2, '0')}</span>
+                                            <span style={{ fontSize: '0.5rem', color: 'var(--accent-teal)', fontWeight: 'bold' }}>MINS</span>
+                                        </div>
                                     </div>
                                 </div>
                             )}

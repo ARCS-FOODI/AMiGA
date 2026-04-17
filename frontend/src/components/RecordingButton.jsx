@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getRecordingStatus, startRecording, stopRecording } from '../api';
+import { getRecordingStatus, startRecording, stopRecording, getRecipeStatus } from '../api';
 
 export default function RecordingButton() {
     const [isRecording, setIsRecording] = useState(false);
+    const [isCycling, setIsCycling] = useState(false);
     const [sessionDir, setSessionDir] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -21,9 +22,13 @@ export default function RecordingButton() {
 
     const fetchStatus = async () => {
         try {
-            const status = await getRecordingStatus();
-            setIsRecording(status.is_recording);
-            setSessionDir(status.session_dir);
+            const [recStatus, growStatus] = await Promise.all([
+                getRecordingStatus(),
+                getRecipeStatus()
+            ]);
+            setIsRecording(recStatus.is_recording);
+            setSessionDir(recStatus.session_dir);
+            setIsCycling(growStatus.is_cycling);
         } catch (err) {
             setError("Cannot connect to recording service.");
         } finally {
@@ -47,6 +52,16 @@ export default function RecordingButton() {
     }, []);
 
     const toggleRecording = async () => {
+        if (isRecording && isCycling) {
+            const confirmed = window.confirm(
+                "⚠️ ATTENTION: A Growth Lifecycle is currently ACTIVE.\n\n" +
+                "Stopping recording now will result in missing telemetry for this live cycle. " +
+                "It is recommended to stop the Growth Lifecycle Hub first if the experiment is finished.\n\n" +
+                "Do you still want to stop recording?"
+            );
+            if (!confirmed) return;
+        }
+
         setLoading(true);
         setError(null);
         try {

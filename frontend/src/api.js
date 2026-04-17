@@ -1,5 +1,5 @@
 // Centralized API fetching logic
-const API_BASE = `http://${window.location.hostname}:8000`;
+export const API_BASE = `http://${window.location.hostname}:8000`;
 
 const handleResponse = async (res) => {
     if (!res.ok) {

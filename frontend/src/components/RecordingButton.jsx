@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getRecordingStatus, startRecording, stopRecording, getRecipeStatus } from '../api';
+import { getRecordingStatus, startRecording, stopRecording, getRecipeStatus, API_BASE } from '../api';
 
 export default function RecordingButton() {
     const [isRecording, setIsRecording] = useState(false);
@@ -168,6 +168,39 @@ export default function RecordingButton() {
                     <button className="btn-secondary" onClick={handleSaveDefaults} style={{ width: '100%' }}>
                         💾 Save Defaults
                     </button>
+                </div>
+            )}
+
+            {isRecording && (
+                <div style={{
+                    marginTop: '1.5rem',
+                    padding: '1rem',
+                    background: 'rgba(16, 185, 129, 0.05)',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                            📡 LIVE TELEMETRY API
+                        </span>
+                        <a 
+                            href={`${API_BASE}/recording/active/list`} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            style={{ fontSize: '0.7rem', color: 'var(--accent-blue)', textDecoration: 'none', transition: 'all 0.2s' }}
+                        >
+                            Open JSON Manifest ↗
+                        </a>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>External researchers can access live data stream via:</span>
+                        <code style={{ fontSize: '0.7rem', color: 'var(--accent-teal)', background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: '4px', wordBreak: 'break-all' }}>
+                            {API_BASE}/recording/active/download/&#123;filename&#125;.csv
+                        </code>
+                    </div>
                 </div>
             )}
         </div>

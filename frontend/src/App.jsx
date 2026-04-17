@@ -85,7 +85,7 @@ function App() {
             <SISMonitor title="Main Grow Area SIS" />
             <div className="grid-layout">
               <SensorMonitor title="Tray 1 Sensors" addr={0x48} />
-              <SensorMonitor title="Tray 2 Sensors" addr={0x49} />
+              <SensorMonitor title="Tray 2 Sensors" addr={0x4B} />
               <ScaleMonitor />
             </div>
           </div>

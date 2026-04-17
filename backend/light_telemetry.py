@@ -1,60 +1,72 @@
 from __future__ import annotations
-
+ 
 import threading
 import csv
 from pathlib import Path
 from datetime import datetime
 from . import light
-
-_thread: threading.Thread | None = None
-_stop_flag = threading.Event()
+ 
 _session_dir: Path | None = None
-_interval: float = 5.0
 _device_name = "GrowLightRelay"
 
-def _tick() -> None:
+_heartbeat_thread: threading.Thread | None = None
+_stop_flag = threading.Event()
+
+def log_light_event(is_on: bool, event_type: str = "STATUS") -> None:
+    """Writes the light state to CSV. Can be called by event or heartbeat."""
     if not _session_dir:
         return
     try:
-        data = light.manager.main_light.get_state()
         now_iso = datetime.now().astimezone().isoformat()
-        
         file_path = _session_dir / "light_status.csv"
         file_exists = file_path.exists()
         
         with file_path.open("a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(["time", "device_name", "is_on"])
+                writer.writerow(["time", "device_name", "is_on", "event_type"])
             writer.writerow([
                 now_iso, 
                 _device_name, 
-                data.get("on", "")
+                is_on,
+                event_type
             ])
             
     except Exception as e:
-        print(f"[LIGHT_TELEMETRY] Failed to read or write data: {e}")
+        print(f"[LIGHT_TELEMETRY] Failed to write event: {e}")
 
-def _run_forever() -> None:
-    print(f"[LIGHT_TELEMETRY] Started Light telemetry thread. Saving to: {_session_dir}")
+def _run_heartbeat() -> None:
+    """Slow loop to log current state periodically even if no changes occur."""
     while not _stop_flag.is_set():
-        _tick()
-        _stop_flag.wait(_interval)
+        log_light_event(light.manager.main_light.is_on, event_type="HEARTBEAT")
+        # Wait 1 minute between heartbeats
+        if _stop_flag.wait(60):
+            break
 
 def start(session_dir: str, interval: float = 5.0) -> None:
-    global _thread, _session_dir, _interval
-    if _thread and _thread.is_alive():
-        return
-        
+    """
+    Initializes telemetry. 
+    Registers event callback and starts a slow heartbeat thread.
+    """
+    global _session_dir, _heartbeat_thread
+    
     _session_dir = Path(session_dir)
     _session_dir.mkdir(parents=True, exist_ok=True)
-    _interval = interval
     _stop_flag.clear()
     
-    _thread = threading.Thread(target=_run_forever, name="amiga-light-telemetry", daemon=True)
-    _thread.start()
+    # Register the callback in the hardware layer
+    light.register_callback(lambda on: log_light_event(on, event_type="CHANGE"))
+    
+    # Start slow heartbeat
+    if not _heartbeat_thread or not _heartbeat_thread.is_alive():
+        _heartbeat_thread = threading.Thread(target=_run_heartbeat, name="amiga-light-heartbeat", daemon=True)
+        _heartbeat_thread.start()
+    
+    # Log initial state
+    log_light_event(light.manager.main_light.is_on, event_type="STARTUP")
 
 def stop() -> None:
+    """Stops the heartbeat thread."""
     _stop_flag.set()
-    if _thread:
-        _thread.join(timeout=2.0)
+    if _heartbeat_thread:
+        _heartbeat_thread.join(timeout=2.0)

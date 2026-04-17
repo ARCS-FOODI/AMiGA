@@ -1,5 +1,5 @@
 // Centralized API fetching logic
-const API_BASE = `http://${window.location.hostname}:8000`;
+export const API_BASE = `http://${window.location.hostname}:8000`;
 
 const handleResponse = async (res) => {
     if (!res.ok) {
@@ -98,3 +98,6 @@ export const saveRecipe = (recipe) =>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(recipe)
     }).then(handleResponse);
+
+export const getHealth = () => fetch(`${API_BASE}/health`).then(handleResponse);
+

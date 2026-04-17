@@ -21,17 +21,7 @@ from .settings import (
 
 LOG_FILE = Path(__file__).resolve().parents[1] / "data" / "sensors.csv"
 
-def _log_sensor_data_wide(device_name: str, ts: str, addr: int, v0: float, v1: float, v2: float, v3: float) -> None:
-    try:
-        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        file_exists = LOG_FILE.exists()
-        with LOG_FILE.open("a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(["timestamp", "device_name", "addr", "v0", "v1", "v2", "v3"])
-            writer.writerow([ts, device_name, addr, round(v0, 4), round(v1, 4), round(v2, 4), round(v3, 4)])
-    except Exception as e:
-        print(f"[LOG] Failed to write to {LOG_FILE.name}: {e}")
+# Removed unused legacy logging function _log_sensor_data_wide
 
 
 if not SIMULATE_GPIO:
@@ -45,7 +35,8 @@ else:
     class MockI2C:
         def __init__(self, *args, **kwargs): pass
     class MockADS: 
-        def __init__(self, *args, **kwargs): self.gain = 1
+        def __init__(self, *args, **kwargs):
+            self.gain = 1
     class MockAnalogIn:
         def __init__(self, ads, chan):
             self._voltage = random.uniform(0.5, 3.2)
@@ -61,7 +52,11 @@ else:
         def gpio_claim_input(self, handle, pin): pass
         def gpio_read(self, handle, pin): return 1 # 1 = Dry
 
-    board = type("board", (), {"SCL": 1, "SDA": 2, "I2C": lambda *a, **k: None})
+    board = type("board", (), {
+        "SCL": 1, 
+        "SDA": 2, 
+        "I2C": lambda *a, **k: MockI2C()
+    })
     busio = type("busio", (), {"I2C": MockI2C})
     ADS = type("ADS", (), {"ADS1115": MockADS})
     AnalogIn = MockAnalogIn
@@ -105,9 +100,11 @@ class SensorArray:
                 lgpio.gpio_claim_input(self._handle, self.do_pin)
 
     def _ensure_adc(self, addr, gain):
-        if not self._i2c:
+        if self._i2c is None:
             self._i2c = board.I2C()
+            
         if addr not in self._ads_dict:
+            # For real hardware, address matters. For mock, we'll store it by address too.
             ads = ADS.ADS1115(self._i2c, address=addr)
             ads.gain = gain
             self._ads_dict[addr] = ads
@@ -155,6 +152,7 @@ class SensorArray:
             req_gain = gain if gain is not None else self.gain
             req_do_pin = do_pin if do_pin is not None else self.do_pin
             
+            # This is inside the lock, ensuring safe access to _ads_dict and _chans_dict
             self._ensure_adc(req_addr, req_gain)
             for i in range(1, samples + 1):
                 volts = self._read_analog_channels(req_addr, avg)
@@ -170,11 +168,11 @@ class SensorArray:
                     }
                 )
 
-                # Removed _log_sensor_data_wide(...) decoupling API read from CSV save
                 if i < samples:
                     time.sleep(interval)
 
         return {
+            "device_id": f"ADS1115_0x{req_addr:02x}",
             "addr": req_addr,
             "gain": req_gain,
             "readings": readings,

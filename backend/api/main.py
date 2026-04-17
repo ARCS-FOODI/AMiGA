@@ -108,6 +108,109 @@ def get_config():
     }
 
 
+@app.get("/health", tags=["system"])
+def get_health():
+    """
+    Per-device health check — inspects in-memory manager state only, no hardware I/O.
+    Returns status per module: 'ok' | 'simulated' | 'error'
+    """
+    from ..settings import SIMULATE_GPIO, SIMULATE_SCALE
+
+    devices = {}
+
+    # ── Pumps (GPIO stepper drivers) ──────────────────────────────────────────
+    try:
+        if SIMULATE_GPIO:
+            devices["pumps"] = {"status": "simulated"}
+        elif hs_pumps.manager._handle is not None:
+            devices["pumps"] = {"status": "ok"}
+        else:
+            devices["pumps"] = {"status": "error", "error": "GPIO handle not opened"}
+    except Exception as e:
+        devices["pumps"] = {"status": "error", "error": str(e)}
+
+    # ── Soil moisture sensors / ADC ───────────────────────────────────────────
+    try:
+        if SIMULATE_GPIO:
+            devices["sensors"] = {"status": "simulated"}
+        elif hs_sensors.manager._handle is not None:
+            devices["sensors"] = {"status": "ok"}
+        else:
+            devices["sensors"] = {"status": "error", "error": "GPIO chip not opened"}
+    except Exception as e:
+        devices["sensors"] = {"status": "error", "error": str(e)}
+
+    # ── Grow light ────────────────────────────────────────────────────────────
+    try:
+        lm = hs_light.manager
+        if SIMULATE_GPIO:
+            devices["light"] = {"status": "simulated"}
+        elif getattr(lm, "_handle", None) is not None or getattr(lm.main_light, "_handle", None) is not None:
+            devices["light"] = {"status": "ok"}
+        else:
+            devices["light"] = {"status": "error", "error": "Light GPIO handle not opened"}
+    except Exception as e:
+        devices["light"] = {"status": "error", "error": str(e)}
+
+    # ── Scale ─────────────────────────────────────────────────────────────────
+    try:
+        if SIMULATE_SCALE:
+            devices["scale"] = {"status": "simulated"}
+        elif isinstance(hs_scale.manager, hs_scale._HardwareScaleManager):
+            if hs_scale.manager._running and hs_scale.manager._ser and hs_scale.manager._ser.is_open:
+                devices["scale"] = {"status": "ok"}
+            else:
+                devices["scale"] = {"status": "error", "error": "Serial port not open or thread stopped"}
+        else:
+            devices["scale"] = {"status": "ok"}
+    except Exception as e:
+        devices["scale"] = {"status": "error", "error": str(e)}
+
+    # ── SCD41 (CO2 / Temp / Humidity) ────────────────────────────────────────
+    try:
+        if SIMULATE_GPIO:
+            devices["scd41"] = {"status": "simulated"}
+        elif hs_scd41.manager._sensor is not None:
+            devices["scd41"] = {"status": "ok"}
+        else:
+            devices["scd41"] = {"status": "error", "error": "I2C sensor not initialized"}
+    except Exception as e:
+        devices["scd41"] = {"status": "error", "error": str(e)}
+
+    # ── TSL2561 (Luminosity) ──────────────────────────────────────────────────
+    try:
+        if SIMULATE_GPIO:
+            devices["tsl2561"] = {"status": "simulated"}
+        elif hs_tsl2561.manager._sensor is not None:
+            devices["tsl2561"] = {"status": "ok"}
+        else:
+            devices["tsl2561"] = {"status": "error", "error": "I2C sensor not initialized"}
+    except Exception as e:
+        devices["tsl2561"] = {"status": "error", "error": str(e)}
+
+    # ── SIS (Soil NPK / pH — Modbus) ─────────────────────────────────────────
+    # SIS has no persistent manager — each read opens/closes the port.
+    # We mark it as simulated when GPIO sim is on, otherwise unknown until a read fails.
+    devices["sis"] = {"status": "simulated" if SIMULATE_GPIO else "ok"}
+
+    # ── Overall summary ───────────────────────────────────────────────────────
+    error_count     = sum(1 for d in devices.values() if d["status"] == "error")
+    simulated_count = sum(1 for d in devices.values() if d["status"] == "simulated")
+    total           = len(devices)
+
+    if error_count == total:
+        overall = "offline"
+    elif error_count > 0:
+        overall = "degraded"
+    elif simulated_count == total:
+        overall = "simulated"
+    else:
+        overall = "ok"
+
+    return {"overall": overall, "devices": devices}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("backend.api.main:app", host="0.0.0.0", port=8000, reload=True)
+

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict, Optional
 from datetime import datetime
@@ -103,3 +104,42 @@ def get_recording_status():
         "is_recording": _is_recording,
         "session_dir": _active_session_dir
     }
+
+@router.get("/active/list")
+def list_active_files():
+    """Lists all CSV files in the currently active recording session."""
+    if not _is_recording or not _active_session_dir:
+        raise HTTPException(status_code=400, detail="No active recording session.")
+    
+    session_path = Path(_active_session_dir)
+    if not session_path.exists():
+        raise HTTPException(status_code=404, detail="Active session directory not found on disk.")
+    
+    files = [f.name for f in session_path.glob("*.csv")]
+    return {
+        "status": "active",
+        "session": session_path.name,
+        "files": files
+    }
+
+@router.get("/active/download/{filename}")
+def download_active_file(filename: str):
+    """Streams a specific CSV file from the active recording session."""
+    if not _is_recording or not _active_session_dir:
+        raise HTTPException(status_code=400, detail="No active recording session.")
+    
+    # Security: only allow CSV files
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Access denied: Only .csv files are exposed.")
+    
+    # Path traversal protection: Path() handles the basename well
+    file_path = Path(_active_session_dir) / os.path.basename(filename)
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File '{filename}' not found in active session.")
+    
+    return FileResponse(
+        path=file_path,
+        media_type='text/csv',
+        filename=filename
+    )

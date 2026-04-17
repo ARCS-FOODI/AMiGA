@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { getRecipe, getRecipeStatus, saveRecipe, startRecording, getRecordingStatus, stopRecording, stopCycle } from '../api';
+import { getRecipe, getRecipeStatus, saveRecipe, startRecording, getRecordingStatus, stopRecording, stopCycle, getHealth } from '../api';
 
 export default function GrowthControlCenter() {
-    const [status, setStatus] = useState(null);
+    const [status,   setStatus]   = useState(null);
+    const [health,   setHealth]   = useState(null); // per-device module health
     const [recording, setRecording] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
+    const [saving,   setSaving]   = useState(false);
+    const [error,    setError]    = useState(null);
 
     useEffect(() => {
         fetchStatus();
@@ -15,11 +16,17 @@ export default function GrowthControlCenter() {
 
     const fetchStatus = async () => {
         try {
-            const [sData, recData] = await Promise.all([getRecipeStatus(), getRecordingStatus()]);
+            const [sData, recData, hData] = await Promise.all([
+                getRecipeStatus(),
+                getRecordingStatus(),
+                getHealth(),
+            ]);
             setStatus(sData);
             setRecording(recData.is_recording);
+            setHealth(hData);
         } catch (err) {
-            // silent
+            // server unreachable — keep previous health, null out status
+            setStatus(null);
         }
     };
 
@@ -68,9 +75,55 @@ export default function GrowthControlCenter() {
     const currentDay = status?.current_day || 0;
     const totalDays = status?.total_days || 0;
     const activePhase = status?.phase?.name || "None";
-    const daemonActive = status?.active;
-    const isCycling = status?.is_cycling;
+    const daemonActive = status?.active;      // scheduler thread is alive
+    const isCycling = status?.is_cycling;     // active phase + running=true
     const createdAt = status?.created_at;
+
+    // ── 3-state server health driven by device module faults ─────────────────
+    // OFFLINE  — fetch failed entirely (status + health both null)
+    // DEGRADED — server up but one or more device modules report 'error'
+    // ONLINE   — server up, all modules ok or simulated
+    const devices      = health?.devices || {};
+    const faultedDevs  = Object.entries(devices).filter(([, d]) => d.status === 'error');
+    const allSimulated = Object.values(devices).length > 0 &&
+                         Object.values(devices).every(d => d.status === 'simulated');
+
+    const serverState = status === null && health === null
+        ? 'offline'
+        : !daemonActive
+            ? 'offline'
+            : faultedDevs.length > 0
+                ? 'degraded'
+                : 'online';
+
+    const SERVER_COLOR = {
+        online:   'var(--accent-green)',
+        degraded: 'var(--accent-yellow)',
+        offline:  'var(--accent-red)',
+    };
+    const SERVER_LABEL = {
+        online:   allSimulated ? 'SIMULATED' : 'ONLINE',
+        degraded: 'DEGRADED',
+        offline:  'OFFLINE',
+    };
+
+    // Human-readable device label map
+    const DEVICE_LABELS = {
+        pumps:   'Pump Drivers (GPIO)',
+        sensors: 'Soil Moisture Sensors (ADC)',
+        light:   'Grow Light Controller',
+        scale:   'Weight Scale (Serial)',
+        scd41:   'CO₂ / Temp / Humidity (SCD41)',
+        tsl2561: 'Luminosity Sensor (TSL2561)',
+        sis:     'Soil NPK / pH Sensor (SIS)',
+    };
+
+    // Build fault list for banner
+    const faultReasons = faultedDevs.map(([key, d]) => ({
+        icon: '⚠',
+        name: DEVICE_LABELS[key] || key,
+        msg:  d.error || 'Device not initialized',
+    }));
 
     // Calculate duration since start
     const [timerData, setTimerData] = useState({ d: 0, h: 0, m: 0 });
@@ -172,12 +225,19 @@ export default function GrowthControlCenter() {
                         </div>
 
                         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                            {/* Daemon Status */}
+                            {/* System Server — 3-state indicator */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>System Server</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: daemonActive ? 'var(--accent-green)' : 'var(--accent-red)', boxShadow: daemonActive ? '0 0 8px var(--accent-green)' : 'none' }}></div>
-                                    <strong style={{ color: daemonActive ? 'var(--accent-green)' : 'var(--accent-red)', fontSize: '0.9rem' }}>{daemonActive ? 'ONLINE' : 'OFFLINE'}</strong>
+                                    <div style={{
+                                        width: '10px', height: '10px', borderRadius: '50%',
+                                        background: SERVER_COLOR[serverState],
+                                        boxShadow: `0 0 8px ${SERVER_COLOR[serverState]}`,
+                                        animation: serverState === 'degraded' ? 'pulse-live 2s infinite ease-in-out' : 'none',
+                                    }}></div>
+                                    <strong style={{ color: SERVER_COLOR[serverState], fontSize: '0.9rem' }}>
+                                        {SERVER_LABEL[serverState]}
+                                    </strong>
                                 </div>
                             </div>
                             
@@ -227,6 +287,63 @@ export default function GrowthControlCenter() {
                             )}
                         </div>
                     </div>
+
+                    {/* ── Degraded / Offline notification banner ── */}
+                    {serverState === 'offline' && (
+                        <div style={{
+                            width: '100%',
+                            background: 'rgba(239,68,68,0.12)',
+                            border: '1px solid rgba(239,68,68,0.45)',
+                            borderRadius: '8px',
+                            padding: '0.75rem 1rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            marginTop: '0.5rem',
+                        }}>
+                            <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>🔴</span>
+                            <div>
+                                <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--accent-red)', marginBottom: '2px' }}>
+                                    System Server Unreachable
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                                    The AMiGA backend is not responding. Check that the server process is running on port 8000.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {serverState === 'degraded' && faultReasons.length > 0 && (
+                        <div style={{
+                            width: '100%',
+                            background: 'rgba(234,179,8,0.08)',
+                            border: '1px solid rgba(234,179,8,0.38)',
+                            borderRadius: '8px',
+                            padding: '0.75rem 1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.55rem',
+                            marginTop: '0.5rem',
+                        }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: 'var(--accent-yellow)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                ⚠ Hardware Module Faults Detected
+                            </div>
+                            {faultReasons.map((r, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem' }}>
+                                    <span style={{ flexShrink: 0, color: 'var(--accent-yellow)' }}>{r.icon}</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.75)' }}>
+                                            {r.name}
+                                        </div>
+                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.42)', lineHeight: 1.4, marginTop: '1px' }}>
+                                            {r.msg}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
 
                     {/* Integrated Start Button */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', flex: 1, minWidth: '250px' }}>

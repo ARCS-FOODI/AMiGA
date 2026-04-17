@@ -58,7 +58,17 @@ export default function RecipeManager() {
             day_start: newStart,
             day_end: newStart + 7,
             lighting: { mode: 'daynight', on_time: '06:00', off_time: '20:00' },
-            fluid_control: { trigger: 'moisture', pump: 'water', dry_threshold_v: 2.0, dose_ml: 50, hz: 100, cooldown_minutes: 60 }
+            fluid_control: { 
+                trigger: 'moisture', 
+                pump: 'water', 
+                dry_threshold_v: 4.0, 
+                priming_v: 2.5,
+                super_dry_v: 5.3,
+                vote_k: 2,
+                dose_ml: 50, 
+                hz: 100, 
+                cooldown_minutes: 60 
+            }
         };
         setRecipe({
             ...recipe,
@@ -217,29 +227,86 @@ export default function RecipeManager() {
                                         )}
                                     </div>
 
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Fluid Target & Pump</label>
+                                    <div style={{ flex: 1.5 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Fluid Target & Pump</label>
+                                            {status?.current_voltages && status.current_voltages.length > 0 && (
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--accent-teal)' }}>
+                                                    Live Avg: {(status.current_voltages.reduce((a,b)=>a+b,0)/status.current_voltages.length).toFixed(2)}V
+                                                </div>
+                                            )}
+                                        </div>
                                         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                             <select 
                                                 value={phase.fluid_control?.pump || 'water'}
                                                 onChange={e => { const np=[...recipe.phases]; np[idx].fluid_control.pump=e.target.value; setRecipe({...recipe, phases: np}); }}
-                                                style={{ flex: 1 }}
+                                                style={{ flex: 1.2 }}
                                             >
                                                 <option value="water">Water Pump</option>
                                                 <option value="food">Food Pump</option>
                                             </select>
                                             <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '0 0.5rem', flex: 1 }}>
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>&lt;</span>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>&gt;</span>
                                                 <input 
                                                     type="number" 
                                                     step="0.1" 
-                                                    value={phase.fluid_control?.dry_threshold_v || 2.0} 
+                                                    value={phase.fluid_control?.dry_threshold_v || 4.0} 
                                                     onChange={e => { const np=[...recipe.phases]; np[idx].fluid_control.dry_threshold_v=parseFloat(e.target.value); setRecipe({...recipe, phases: np}); }}
                                                     style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.4rem 0' }}
                                                 />
                                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>V</span>
                                             </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '0 0.5rem', flex: 0.6 }}>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '0.3rem' }}>K:</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={phase.fluid_control?.vote_k || 2} 
+                                                    onChange={e => { const np=[...recipe.phases]; np[idx].fluid_control.vote_k=parseInt(e.target.value); setRecipe({...recipe, phases: np}); }}
+                                                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.4rem 0' }}
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Calibration Row */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', padding: '0 0.5rem' }}>
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', width: '45px' }}>Primed:</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.1"
+                                                    value={phase.fluid_control?.priming_v || 2.5} 
+                                                    onChange={e => { const np=[...recipe.phases]; np[idx].fluid_control.priming_v=parseFloat(e.target.value); setRecipe({...recipe, phases: np}); }}
+                                                    style={{ width: '100%', background: 'transparent', border: 'none', fontSize: '0.75rem', padding: '0.3rem 0' }}
+                                                />
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>V</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', padding: '0 0.5rem' }}>
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', width: '45px' }}>Dry:</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.1"
+                                                    value={phase.fluid_control?.super_dry_v || 5.3} 
+                                                    onChange={e => { const np=[...recipe.phases]; np[idx].fluid_control.super_dry_v=parseFloat(e.target.value); setRecipe({...recipe, phases: np}); }}
+                                                    style={{ width: '100%', background: 'transparent', border: 'none', fontSize: '0.75rem', padding: '0.3rem 0' }}
+                                                />
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>V</span>
+                                            </div>
+                                            <button 
+                                                className="secondary" 
+                                                onClick={() => {
+                                                    const p = phase.fluid_control?.priming_v || 2.5;
+                                                    const d = phase.fluid_control?.super_dry_v || 5.3;
+                                                    const midway = (p + d) / 2;
+                                                    const np = [...recipe.phases];
+                                                    np[idx].fluid_control.dry_threshold_v = parseFloat(midway.toFixed(2));
+                                                    setRecipe({...recipe, phases: np});
+                                                }}
+                                                style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem' }}
+                                            >
+                                                Set 50%
+                                            </button>
+                                        </div>
+
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '0 0.5rem', flex: 1 }}>
                                                 <input 

@@ -53,7 +53,9 @@ DEFAULT_RECIPE = {
       "fluid_control": {
         "pump": "water",
         "trigger": "moisture",
-        "dry_threshold_v": 2.0,
+        "dry_threshold_v": 4.0,
+        "priming_v": 2.5,
+        "super_dry_v": 5.3,
         "vote_k": 2,
         "dose_ml": 50,
         "hz": 100,
@@ -72,7 +74,9 @@ DEFAULT_RECIPE = {
       "fluid_control": {
         "pump": "food",
         "trigger": "moisture",
-        "dry_threshold_v": 2.2,
+        "dry_threshold_v": 4.2,
+        "priming_v": 2.5,
+        "super_dry_v": 5.3,
         "vote_k": 2,
         "dose_ml": 200,
         "hz": 120,
@@ -133,6 +137,14 @@ def get_grow_status() -> Dict[str, Any]:
     state = _read_json(SCHED_STATE_FILE, default={"last_fluid_ts": 0, "running": False})
     is_running = state.get("running", False)
 
+    # Add live moisture snapshot for UI "Relative Moisture" display
+    current_voltages = []
+    try:
+        snap = sensors.manager.main_array.snapshot(samples=1, avg=3)
+        current_voltages = snap["readings"][0]["voltages"]
+    except:
+        pass
+
     return {
         "active": _thread is not None and _thread.is_alive(),
         "is_cycling": (active_phase is not None) and is_running,
@@ -140,7 +152,8 @@ def get_grow_status() -> Dict[str, Any]:
         "total_days": total_days,
         "phase": active_phase if is_running else None,
         "last_fluid_ts": state.get("last_fluid_ts", 0),
-        "created_at": recipe.get("created_at")
+        "created_at": recipe.get("created_at"),
+        "current_voltages": current_voltages
     }
 
 def tick() -> None:

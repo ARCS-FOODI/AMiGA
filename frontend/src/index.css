@@ -8,9 +8,11 @@
   /* Accents */
   --accent-blue: #0ea5e9;
   --accent-green: #10b981;
+  --accent-teal: #14b8a6;
   --accent-purple: #8b5cf6;
   --accent-yellow: #eab308;
   --accent-red: #ef4444;
+  --accent-orange: #f97316;
 
   /* Glassmorphism */
   --glass-bg: rgba(30, 30, 36, 0.4);
@@ -320,4 +322,19 @@ button.purple:hover {
 
 .pulse-rec {
   animation: pulse-red 2s infinite;
+}
+
+/* Secondary / ghost button used in sensor monitor headers */
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--text-primary);
+  box-shadow: none;
 }

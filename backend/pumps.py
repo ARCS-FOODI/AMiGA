@@ -20,6 +20,17 @@ else:
 
 _on_dispense_callbacks = []
 
+# Frequency-to-Flow-Rate Metrics (Hz -> mL/sec)
+# Values derived from user metrics:
+# 10kHz: 200mL / 60.5s = 3.3058 mL/s
+# 50kHz: 200mL / 21.0s = 9.5238 mL/s
+# 30kHz: Interpolated value = 6.4148 mL/s
+PRESET_RATES = {
+    10000: 3.305785,
+    30000: 6.414797,
+    50000: 9.52381,
+}
+
 def register_on_dispense_callback(callback):
     """Register a function to be called when a pump finishes dispensing: cb(data: dict)"""
     if callback not in _on_dispense_callbacks:
@@ -165,13 +176,18 @@ class StepperPump:
         """
         Run pump based on target volume, using current calibration (ml/s).
         """
+        # Use preset rate if Hz matches exactly, otherwise fallback to stored calibration
         self.refresh_calibration() # Ensure we have the latest calibration
-        if self.calibration_rate <= 0.0:
+        
+        effective_rate = PRESET_RATES.get(hz, self.calibration_rate)
+        
+        if effective_rate <= 0.0:
             raise RuntimeError(
-                f"Pump '{self.name}' has ml_per_sec=0. Set calibration via /pump/calibration first."
+                f"Pump '{self.name}' has unknown flow rate for {hz}Hz and no calibration set. "
+                f"Please select a preset frequency or set calibration."
             )
 
-        seconds = ml / self.calibration_rate
+        seconds = ml / effective_rate
         
         # Hand off to standard run function for execution
         result = self.run_for_seconds(seconds, hz, direction)
@@ -179,7 +195,7 @@ class StepperPump:
         # Override the log and return values to reflect a volume-based run
         result.update({
             "ml": ml,
-            "rate_ml_per_sec": self.calibration_rate,
+            "rate_ml_per_sec": effective_rate,
         })
         
         # NOTE: Pass dispensed liquid over to the simulated scale (assuming 1ml = 1g)

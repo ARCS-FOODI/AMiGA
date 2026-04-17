@@ -33,7 +33,7 @@ DEFAULT_SIS_PORT = '/dev/ttyUSB1'
 DEFAULT_SIS_SLAVE_ID = 1
 
 # Motor defaults
-DEFAULT_HZ     = 1000
+DEFAULT_HZ     = 10000
 DEFAULT_DIR    = "forward"
 
 # Full scenario defaults

@@ -8,8 +8,8 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
     const [running, setRunning] = useState(false);
     const [error, setError] = useState(null);
     const [hzMode, setHzMode] = useState('preset');
-    const [presetHz, setPresetHz] = useState('1000');
-    const [customHz, setCustomHz] = useState('1000');
+    const [presetHz, setPresetHz] = useState('10000');
+    const [customHz, setCustomHz] = useState('10000');
     const [locked, setLocked] = useState(false);
     const [elapsed, setElapsed] = useState(0);
 
@@ -101,10 +101,9 @@ export default function PumpControl({ pumpName, colorBase = 'var(--accent-blue)'
                         disabled={running || locked}
                         style={{ flex: hzMode === 'custom' ? 1 : 2 }}
                     >
-                        <option value="200">200 Hz (Slow / High Torque)</option>
-                        <option value="500">500 Hz</option>
-                        <option value="1000">1000 Hz (Default)</option>
-                        <option value="2000">2000 Hz (Fast / Low Torque)</option>
+                        <option value="10000">10 kHz (Default / High Torque)</option>
+                        <option value="30000">30 kHz (Balanced)</option>
+                        <option value="50000">50 kHz (High Speed)</option>
                         <option value="custom">Custom...</option>
                     </select>
 

@@ -122,7 +122,7 @@ function MetricTile({ label, value, unit, zones, subValue }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {zones && <ZoneDot value={value} zones={zones} />}
                 <span style={{
-                    fontSize: '0.68rem', color: 'rgba(255,255,255,0.38)',
+                    fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)',
                     textTransform: 'uppercase', letterSpacing: '0.4px',
                 }}>{label}</span>
             </div>
@@ -334,7 +334,7 @@ export default function SISMonitor({ title = "SIS - Soil Integrated Sensor", por
                 padding: '1rem',
                 display: 'flex', flexDirection: 'column', gap: '0.8rem',
             }}>
-                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.32)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     Macronutrient Profile (NPK)
                 </div>
                 <NPKBar label="N" value={data?.nitrogen}   max={300} color="#10b981" />

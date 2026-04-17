@@ -213,7 +213,7 @@ export default function SCD41Monitor({ title = "Environmental Condition (SCD41)"
 
                 {/* Temperature */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                         Temperature
                     </span>
                     <ArcGauge
@@ -232,7 +232,7 @@ export default function SCD41Monitor({ title = "Environmental Condition (SCD41)"
 
                 {/* CO₂ — large focal gauge */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}>
-                    <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                         CO₂ Concentration
                     </span>
                     <ArcGauge
@@ -252,7 +252,7 @@ export default function SCD41Monitor({ title = "Environmental Condition (SCD41)"
 
                 {/* Humidity */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    <span style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                         Humidity
                     </span>
                     <ArcGauge

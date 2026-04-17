@@ -36,6 +36,14 @@ export default function TelemetryChart({
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [hiddenKeys, setHiddenKeys] = useState([]);
+
+    const toggleLine = (e) => {
+        const { dataKey } = e;
+        setHiddenKeys(prev => 
+            prev.includes(dataKey) ? prev.filter(k => k !== dataKey) : [...prev, dataKey]
+        );
+    };
 
     // Derived device label for visual verification
     const deviceTag = useMemo(() => {
@@ -195,7 +203,7 @@ export default function TelemetryChart({
                 </div>
             </div>
 
-            <div style={{ width: '100%', height: '260px', marginTop: '1rem' }}>
+            <div style={{ width: '100%', height: '220px', marginTop: '1rem' }}>
                 {loading && data.length === 0 ? (
                     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
                         Building Matrix View...
@@ -223,7 +231,11 @@ export default function TelemetryChart({
                                 contentStyle={{ background: 'rgba(20,20,25,0.9)', border: '1px solid var(--glass-border)', borderRadius: '8px', fontSize: '12px' }}
                                 itemStyle={{ padding: '2px 0' }}
                             />
-                            <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                            <Legend 
+                                onClick={toggleLine}
+                                style={{ cursor: 'pointer' }}
+                                wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} 
+                            />
                             {linesToRender.map((line) => (
                                 <Line
                                     key={line.key}
@@ -233,6 +245,7 @@ export default function TelemetryChart({
                                     stroke={line.color}
                                     strokeWidth={2}
                                     dot={false}
+                                    hide={hiddenKeys.includes(line.key)}
                                     activeDot={{ r: 4, stroke: 'white', strokeWidth: 2 }}
                                     animationDuration={500}
                                 />
@@ -241,6 +254,11 @@ export default function TelemetryChart({
                     </ResponsiveContainer>
                 )}
             </div>
+            {isComparative && hiddenKeys.length > 0 && (
+                <div style={{ fontSize: '0.65rem', color: 'var(--accent-blue)', opacity: 0.8, textAlign: 'center', marginTop: '0.4rem' }}>
+                    💡 {hiddenKeys.length} sensor(s) hidden. Click legend to restore.
+                </div>
+            )}
         </div>
     );
 }

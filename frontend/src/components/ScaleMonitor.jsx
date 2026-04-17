@@ -127,16 +127,16 @@ export default function ScaleMonitor() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '2rem', background: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ display: 'flex', gap: '2rem', background: 'rgba(0,0,0,0.15)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                         <div>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', display: 'block' }}>ABS GROSS</span>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>ABS GROSS</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
                                 {absoluteWeight !== null ? absoluteWeight.toFixed(3) : '--.---'}g
                             </span>
                         </div>
                         <div style={{ borderLeft: '1px solid var(--glass-border)', paddingLeft: '2rem' }}>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', display: 'block' }}>REFERENCE</span>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'monospace', color: 'var(--accent-teal)' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>REFERENCE</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace', color: 'var(--accent-teal)' }}>
                                 {referenceWeight.toFixed(3)}g
                             </span>
                         </div>

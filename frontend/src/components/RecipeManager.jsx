@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getRecipe, getRecipeStatus, saveRecipe } from '../api';
+import { getRecipe, getRecipeStatus, saveRecipe, startRecording } from '../api';
 
 export default function RecipeManager() {
     const [recipe, setRecipe] = useState(null);
@@ -48,12 +48,13 @@ export default function RecipeManager() {
         }
     };
 
-    const handleResetSession = async () => {
+    const handleStartCycle = async () => {
         setSaving(true);
         setError(null);
         try {
             const newRecipe = { ...recipe, created_at: new Date().toISOString() };
             await saveRecipe(newRecipe);
+            await startRecording({}, newRecipe.name); // Pass empty frequencies to use defaults
             await fetchData();
         } catch (err) {
             setError(err.message);
@@ -80,11 +81,11 @@ export default function RecipeManager() {
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         Day: <strong style={{ color: 'white' }}>{currentDay}</strong> | Phase: <strong style={{ color: 'var(--accent-teal)' }}>{activePhase}</strong>
                     </span>
-                    <button className="btn-secondary" onClick={handleResetSession} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                        Reset Session (Day 0)
-                    </button>
-                    <button className="primary" onClick={handleSave} disabled={saving} style={{ padding: '0.5rem 1rem' }}>
+                    <button className="primary" onClick={handleSave} disabled={saving} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'var(--glass-border)' }}>
                         {saving ? 'Saving...' : 'Save Recipe'}
+                    </button>
+                    <button className="primary" onClick={handleStartCycle} disabled={saving} style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', background: 'var(--accent-green)', color: 'black', fontWeight: 'bold', boxShadow: '0 0 15px var(--accent-green)' }}>
+                        ▶ START GROWTH CYCLE
                     </button>
                 </div>
             </div>

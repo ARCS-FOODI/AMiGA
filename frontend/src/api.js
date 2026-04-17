@@ -81,11 +81,11 @@ export const getScaleBundles = () => fetch(`${API_BASE}/scale/bundles`).then(han
 export const tareScale = () => fetch(`${API_BASE}/scale/tare`, { method: "POST" }).then(handleResponse);
 
 export const getRecordingStatus = () => fetch(`${API_BASE}/recording/status`).then(handleResponse);
-export const startRecording = (frequencies) => 
+export const startRecording = (frequencies, recipeName = null) => 
     fetch(`${API_BASE}/recording/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frequencies })
+        body: JSON.stringify({ frequencies, recipeName })
     }).then(handleResponse);
 export const stopRecording = () => fetch(`${API_BASE}/recording/stop`, { method: "POST" }).then(handleResponse);
 

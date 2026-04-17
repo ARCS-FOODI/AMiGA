@@ -12,7 +12,7 @@ import RecipeManager from './components/RecipeManager'
 import GrowthControlCenter from './components/GrowthControlCenter'
 import ScaleMonitor from './components/ScaleMonitor'
 import RecordingButton from './components/RecordingButton'
-import GrafanaPanel from './components/GrafanaPanel'
+import TelemetryChart from './components/TelemetryChart'
 
 function App() {
   return (
@@ -46,6 +46,20 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">Environment Monitors</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="grid-layout">
+              <TelemetryChart 
+                title="Air Quality History (SCD41)" 
+                filename="co2_data.csv" 
+                dataKeys={["co2_ppm", "humidity_percent", "temperature_c"]} 
+                colors={["var(--accent-teal)", "var(--accent-blue)", "var(--accent-orange)"]}
+              />
+              <TelemetryChart 
+                title="Luminosity History (TSL2561)" 
+                filename="light_data.csv" 
+                dataKeys={["lux"]} 
+                colors={["var(--accent-yellow)"]}
+              />
+            </div>
             <SCD41Monitor title="Environmental Condition (SCD41)" />
             <TSL2561Monitor title="Luminosity (TSL2561)" />
           </div>
@@ -54,12 +68,20 @@ function App() {
         <section className="category-section">
           <h2 className="category-header">Grow Trays & Payload</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <GrafanaPanel 
-              title="Moisture History (Grafana)" 
-              src="http://localhost:3000/d-solo/ad6tm2x/amiga?orgId=1&from=1776434278343&to=1776434578343&timezone=browser&var-datasource0=&refresh=auto&panelId=panel-5"
-              height="260px"
-              dashboardUrl="http://localhost:3000/d/ad6tm2x/amiga?orgId=1"
-            />
+            <div className="grid-layout">
+              <TelemetryChart 
+                title="Moisture History (T1 & T2)" 
+                filename="sensors.csv" 
+                dataKeys={["v0", "v1", "v2", "v3"]} 
+                colors={["var(--accent-teal)", "var(--accent-green)", "var(--accent-blue)", "var(--accent-purple)"]}
+              />
+              <TelemetryChart 
+                title="Weight History (Scale)" 
+                filename="scale_data.csv" 
+                dataKeys={["weight_g"]} 
+                colors={["var(--accent-orange)"]}
+              />
+            </div>
             <SISMonitor title="Main Grow Area SIS" />
             <div className="grid-layout">
               <SensorMonitor title="Tray 1 Sensors" addr={0x48} />

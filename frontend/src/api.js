@@ -98,3 +98,6 @@ export const saveRecipe = (recipe) =>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(recipe)
     }).then(handleResponse);
+
+export const getHealth = () => fetch(`${API_BASE}/health`).then(handleResponse);
+

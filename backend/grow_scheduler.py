@@ -58,7 +58,7 @@ DEFAULT_RECIPE = {
         "super_dry_v": 5.3,
         "vote_k": 2,
         "dose_ml": 50,
-        "hz": 100,
+        "hz": 10000,
         "cooldown_minutes": 60
       }
     },
@@ -79,7 +79,7 @@ DEFAULT_RECIPE = {
         "super_dry_v": 5.3,
         "vote_k": 2,
         "dose_ml": 200,
-        "hz": 120,
+        "hz": 10000,
         "cooldown_minutes": 360,
         "notes": "MaxiGro 10-5-14"
       }
@@ -203,7 +203,7 @@ def tick() -> None:
             thresh_v = fluid.get("dry_threshold_v", 2.0)
             vk = fluid.get("vote_k", 2)
             dose_ml = fluid.get("dose_ml", 50.0)
-            req_hz = fluid.get("hz", 100.0)
+            req_hz = fluid.get("hz", 10000.0)
             
             # We don't have an `evaluate_cycle` by ML natively yet, but we can compute seconds or just rely on pump's ml_per_sec natively:
             # Let's read sensors directly here to decide to dose. We can use the controller's logic or do it directly.

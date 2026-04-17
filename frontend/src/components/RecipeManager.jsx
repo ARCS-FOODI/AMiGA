@@ -66,7 +66,7 @@ export default function RecipeManager() {
                 super_dry_v: 5.3,
                 vote_k: 2,
                 dose_ml: 50, 
-                hz: 100, 
+                hz: 10000, 
                 cooldown_minutes: 60 
             }
         };
@@ -320,7 +320,7 @@ export default function RecipeManager() {
                                             <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '4px', padding: '0 0.5rem', flex: 1 }}>
                                                 <input 
                                                     type="number" 
-                                                    value={phase.fluid_control?.hz || 100} 
+                                                    value={phase.fluid_control?.hz || 10000} 
                                                     onChange={e => { const np=[...recipe.phases]; np[idx].fluid_control.hz=parseFloat(e.target.value); setRecipe({...recipe, phases: np}); }}
                                                     style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.4rem 0' }}
                                                 />

@@ -8,6 +8,7 @@ export default function DiagnosticConsole() {
     const [perfStats, setPerfStats] = useState({ domNodes: 0, jsHeapMb: 'N/A' });
     const [activePoints, setActivePoints] = useState({ total: 0, details: {} });
     const [cumulativeKb, setCumulativeKb] = useState(0);
+    const [totalEvents, setTotalEvents] = useState(0);
     const bottomRef = useRef(null);
 
     // Track Chart Data Size
@@ -39,6 +40,7 @@ export default function DiagnosticConsole() {
             if (e.detail.kbSize) {
                 setCumulativeKb(prev => prev + parseFloat(e.detail.kbSize));
             }
+            setTotalEvents(prev => prev + 1);
             setLogs(prev => {
                 const newLog = { ...e.detail, id: ++logIdCounter };
                 const newLogs = [...prev, newLog];
@@ -116,7 +118,7 @@ export default function DiagnosticConsole() {
                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-yellow)', boxShadow: '0 0 8px var(--accent-yellow)', animation: 'pulse-live 2s infinite' }}></span>
                    )}
                    <span style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                       {logs.length} events
+                       {totalEvents} total events tracked
                    </span>
                </div>
            </div>

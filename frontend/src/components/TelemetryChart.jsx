@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-    ResponsiveContainer, 
-    LineChart, 
-    Line, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    Legend 
+import {
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend
 } from 'recharts';
 import Papa from 'papaparse';
 import { fetchTelemetryWindow } from '../api';
@@ -24,15 +24,15 @@ import { POLL_INTERVALS } from '../polling';
  * @param {number} historyHours - How many hours of data to show (default 4)
  * @param {number} refreshInterval - Refresh rate in ms (default 10000)
  */
-export default function TelemetryChart({ 
-    filename, 
-    title = "Telemetry", 
-    dataKeys = ["v0"], 
+export default function TelemetryChart({
+    filename,
+    title = "Telemetry",
+    dataKeys = ["v0"],
     colors = ["var(--accent-teal)"],
     filter = null,
     isComparative = false,
     historyHours = 4,
-    refreshInterval = POLL_INTERVALS.CHART 
+    refreshInterval = POLL_INTERVALS.CHART
 }) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ export default function TelemetryChart({
 
     const toggleLine = (e) => {
         const { dataKey } = e;
-        setHiddenKeys(prev => 
+        setHiddenKeys(prev =>
             prev.includes(dataKey) ? prev.filter(k => k !== dataKey) : [...prev, dataKey]
         );
     };
@@ -56,10 +56,10 @@ export default function TelemetryChart({
         try {
             // BACKEND OPTIMIZATION: Fetch ONLY the requested window
             const csvText = await fetchTelemetryWindow(filename, historyHours);
-            const parsed = Papa.parse(csvText, { 
-                header: true, 
+            const parsed = Papa.parse(csvText, {
+                header: true,
                 dynamicTyping: true,
-                skipEmptyLines: true 
+                skipEmptyLines: true
             });
 
             if (parsed.errors.length > 0 && parsed.data.length === 0) {
@@ -74,21 +74,21 @@ export default function TelemetryChart({
                 // PIVOT logic for overlaying multiple devices
                 // Group by timestamp (rounded to nearest 5 seconds to align slightly offset logs)
                 const groups = new Map();
-                
+
                 sourceRows.forEach(row => {
                     const d = new Date(row.time);
                     // Snap to 5s window to group near-simultaneous sensor logs
-                    const tsKey = Math.floor(d.getTime() / 5000) * 5000; 
+                    const tsKey = Math.floor(d.getTime() / 5000) * 5000;
                     const devId = row['device_id'] || row['device_name'] || 'unknown';
                     const devShort = (devId.includes('0x')) ? devId.split('_').pop() : devId;
 
                     if (!groups.has(tsKey)) {
-                        groups.set(tsKey, { 
+                        groups.set(tsKey, {
                             time: row.time,
                             displayTime: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         });
                     }
-                    
+
                     const entry = groups.get(tsKey);
                     // Add sensor values with device prefix
                     dataKeys.forEach(k => {
@@ -122,13 +122,13 @@ export default function TelemetryChart({
 
             setData(processedData);
             setError(null);
-            
+
             // --- DIAGNOSTICS: Report data size to window ---
             try {
                 window.dispatchEvent(new CustomEvent('chart-data-size', {
                     detail: { chartId: title, points: processedData.length }
                 }));
-            } catch (e) {}
+            } catch (e) { }
 
         } catch (err) {
             console.error(`[TelemetryChart] ${filename} error:`, err);
@@ -147,7 +147,7 @@ export default function TelemetryChart({
             pullData();
             interval = setInterval(pullData, refreshInterval);
         }, Math.random() * 2000);
-        
+
         return () => {
             clearTimeout(timeout);
             if (interval) clearInterval(interval);
@@ -162,7 +162,7 @@ export default function TelemetryChart({
         // For comparative, we need to inspect the data or know the devices
         // We'll extract all keys that look like DEVICE_KEY
         if (data.length === 0) return [];
-        
+
         const allKeys = Object.keys(data[0]).filter(k => k !== 'time' && k !== 'displayTime');
         return allKeys.map((k, i) => ({
             key: k,
@@ -187,11 +187,11 @@ export default function TelemetryChart({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.1rem' }}>📈 {title}</h3>
                     {deviceTag && (
-                        <span style={{ 
-                            fontSize: '0.6rem', 
-                            background: 'rgba(255,255,255,0.1)', 
-                            padding: '2px 6px', 
-                            borderRadius: '4px', 
+                        <span style={{
+                            fontSize: '0.6rem',
+                            background: 'rgba(255,255,255,0.1)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
                             fontFamily: 'monospace',
                             color: 'var(--text-secondary)'
                         }}>
@@ -199,12 +199,12 @@ export default function TelemetryChart({
                         </span>
                     )}
                     {isComparative && (
-                        <span style={{ 
-                            fontSize: '0.6rem', 
-                            background: 'var(--accent-blue)', 
+                        <span style={{
+                            fontSize: '0.6rem',
+                            background: 'var(--accent-blue)',
                             color: 'white',
-                            padding: '2px 6px', 
-                            borderRadius: '4px', 
+                            padding: '2px 6px',
+                            borderRadius: '4px',
                             textTransform: 'uppercase'
                         }}>
                             Overlay
@@ -225,29 +225,29 @@ export default function TelemetryChart({
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                            <XAxis 
-                                dataKey="displayTime" 
-                                stroke="var(--text-secondary)" 
-                                fontSize={10} 
-                                tickLine={false} 
+                            <XAxis
+                                dataKey="displayTime"
+                                stroke="var(--text-secondary)"
+                                fontSize={10}
+                                tickLine={false}
                                 axisLine={false}
                                 minTickGap={30}
                             />
-                            <YAxis 
-                                stroke="var(--text-secondary)" 
-                                fontSize={10} 
-                                tickLine={false} 
+                            <YAxis
+                                stroke="var(--text-secondary)"
+                                fontSize={10}
+                                tickLine={false}
                                 axisLine={false}
                                 domain={['auto', 'auto']}
                             />
-                            <Tooltip 
+                            <Tooltip
                                 contentStyle={{ background: 'rgba(20,20,25,0.9)', border: '1px solid var(--glass-border)', borderRadius: '8px', fontSize: '12px' }}
                                 itemStyle={{ padding: '2px 0' }}
                             />
-                            <Legend 
+                            <Legend
                                 onClick={toggleLine}
                                 style={{ cursor: 'pointer' }}
-                                wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} 
+                                wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
                             />
                             {linesToRender.map((line) => (
                                 <Line

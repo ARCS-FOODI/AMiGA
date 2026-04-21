@@ -71,3 +71,20 @@ The frontend still requests the 4-hour window. However, the backend mathematical
 - CSV parsing resolves in `<2 milliseconds`.
 - DOM Rendering returns to instant-execution.
 - Continuous lines remain smooth thanks to `Recharts` interpolating points cleanly, preserving the full scale and perspective of the multi-hour view without the data bloat.
+
+---
+
+## 4. Future-Proofing & Ongoing Monitoring
+
+To ensure we never accidentally stumble into similar pipelining nightmares, we've implemented active frontend metrics:
+
+### Dynamic Payload Metrics
+In `frontend/src/api.js`, the `fetchTelemetryWindow` method evaluates the size (in KB) of incoming payloads:
+- `< 50 KB`: Logs a standard `[METRIC] debug` event to the browser console.
+- `> 50 KB`: Emits a `[METRIC NOTICE]` warn log to keep an eye on DOM performance.
+- `> 500 KB`: Sounds an extreme `[METRIC ALERT]` siren to alert developers that the backend downsampling limits have likely failed.
+
+### Architectural Inefficiencies Let's Keep an Eye On
+Currently, every `TelemetryChart.jsx` instance resolves its own data independently over the network. 
+- **The Issue**: Because `App.jsx` mounts three separate charts for `sensors.csv` (One Comparative, Tray 1, and Tray 2), and two for `sis_data.csv`, the client is re-requesting the **same exact CSV files** multiple times every 5 seconds.
+- **The Ideal Future Fix**: If scaling hits bottlenecks again, we should implement a central `TelemetryContext` or `Redux Store` that fetches `sensors.csv` and `sis_data.csv` *once* per polling cycle, and distributes the data downward to the nested chart components. Currently, it's trivial due to the newly implemented downsampling constraint (150 rows), but something to keep in mind!

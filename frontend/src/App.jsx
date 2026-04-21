@@ -13,6 +13,7 @@ import GrowthControlCenter from './components/GrowthControlCenter'
 import ScaleMonitor from './components/ScaleMonitor'
 import RecordingButton from './components/RecordingButton'
 import TelemetryChart from './components/TelemetryChart'
+import DiagnosticConsole from './components/DiagnosticConsole'
 
 function App() {
   return (
@@ -123,6 +124,9 @@ function App() {
           </div>
         </section>
       </main>
+
+      {/* Floating System Diagnostic Terminal */}
+      <DiagnosticConsole />
     </>
   )
 }

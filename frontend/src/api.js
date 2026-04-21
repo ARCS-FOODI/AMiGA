@@ -113,6 +113,36 @@ export const fetchTelemetryWindow = (filename, hours = 4) =>
     fetch(`${API_BASE}/recording/active/window/${filename}?hours=${hours}`)
         .then(async res => {
             if (!res.ok) throw new Error(`Telemetry Error: ${res.status}`);
-            return res.text();
+            
+            const text = await res.text();
+            
+            // --- PAYLOAD METRICS & DIAGNOSTICS ---
+            const bytes = new Blob([text]).size;
+            const kbSize = (bytes / 1024).toFixed(2);
+            let level = 'info';
+            let message = '';
+            
+            if (bytes > 500 * 1024) { // > 500 KB Warning
+                level = 'error';
+                message = `🚨 Massive payload detected for ${filename}: ${kbSize} KB. Backend downsampling failed?`;
+                console.warn(message);
+            } else if (bytes > 50 * 1024) { // > 50 KB Notice
+                level = 'warn';
+                message = `⚠️ Large payload for ${filename}: ${kbSize} KB. High DOM overhead.`;
+                console.warn(message);
+            } else {
+                level = 'info';
+                message = `📦 ${filename} synced: ${kbSize} KB`;
+                console.debug(message);
+            }
+            
+            // Dispatch to the UI Diagnostic Console overlay
+            try {
+                window.dispatchEvent(new CustomEvent('telemetry-metric', {
+                    detail: { filename, kbSize, level, message, time: new Date().toLocaleTimeString([], { hour12: false }) }
+                }));
+            } catch (e) {}
+            
+            return text;
         });
 

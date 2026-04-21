@@ -1,0 +1,108 @@
+import { useState, useEffect, useRef } from 'react';
+
+export default function DiagnosticConsole() {
+    const [logs, setLogs] = useState([]);
+    const [isOpen, setIsOpen] = useState(false);
+    const bottomRef = useRef(null);
+
+    useEffect(() => {
+        const handleLog = (e) => {
+            setLogs(prev => {
+                const newLogs = [...prev, e.detail];
+                // Keep only the last 100 logs to prevent memory leaks
+                if (newLogs.length > 100) return newLogs.slice(newLogs.length - 100);
+                return newLogs;
+            });
+        };
+        window.addEventListener('telemetry-metric', handleLog);
+        return () => window.removeEventListener('telemetry-metric', handleLog);
+    }, []);
+
+    useEffect(() => {
+        if (isOpen && bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [logs, isOpen]);
+
+    return (
+        <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            width: isOpen ? '450px' : 'auto',
+            background: 'rgba(15, 15, 20, 0.85)',
+            border: isOpen ? '1px solid var(--accent-blue)' : '1px solid var(--glass-border)',
+            borderRadius: '8px',
+            backdropFilter: 'blur(10px)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: isOpen ? '0 0 20px rgba(59, 130, 246, 0.2)' : '0 4px 20px rgba(0, 0, 0, 0.5)',
+            transition: 'all 0.2s ease',
+            color: 'var(--text-primary)'
+        }}>
+           {/* Header Toggle */}
+           <div 
+               onClick={() => setIsOpen(!isOpen)}
+               style={{
+                   padding: '10px 15px',
+                   cursor: 'pointer',
+                   display: 'flex',
+                   justifyContent: 'space-between',
+                   alignItems: 'center',
+                   borderBottom: isOpen ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                   fontWeight: 'bold',
+               }}
+           >
+               <span style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', color: isOpen ? 'var(--accent-blue)' : 'var(--text-primary)' }}>
+                   {isOpen ? '▼' : '▲'} API Diagnostics Terminal
+               </span>
+               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                   {logs.some(l => l.level === 'warn' || l.level === 'error') && !isOpen && (
+                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-yellow)', boxShadow: '0 0 8px var(--accent-yellow)', animation: 'pulse-live 2s infinite' }}></span>
+                   )}
+                   <span style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                       {logs.length} events
+                   </span>
+               </div>
+           </div>
+
+           {/* Console Body */}
+           {isOpen && (
+               <div style={{ 
+                   height: '350px', 
+                   overflowY: 'auto', 
+                   padding: '12px', 
+                   display: 'flex', 
+                   flexDirection: 'column', 
+                   gap: '6px', 
+                   fontSize: '0.75rem', 
+                   fontFamily: 'monospace',
+                   background: 'rgba(0,0,0,0.5)',
+                   borderRadius: '0 0 8px 8px'
+               }}>
+                   {logs.length === 0 ? (
+                       <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>
+                           Monitoring API payload metrics...
+                       </div>
+                   ) : (
+                       logs.map((log, i) => (
+                           <div key={i} style={{
+                               color: log.level === 'error' ? 'var(--accent-red)' : log.level === 'warn' ? 'var(--accent-yellow)' : '#A3A3A3',
+                               borderBottom: '1px solid rgba(255,255,255,0.03)',
+                               paddingBottom: '4px',
+                               display: 'flex',
+                               gap: '8px',
+                               alignItems: 'baseline'
+                           }}>
+                               <span style={{ color: 'var(--text-secondary)', fontSize: '0.65rem', flexShrink: 0 }}>[{log.time}]</span>
+                               <span style={{ wordBreak: 'break-all' }}>{log.message}</span>
+                           </div>
+                       ))
+                   )}
+                   <div ref={bottomRef} />
+               </div>
+           )}
+        </div>
+    );
+}

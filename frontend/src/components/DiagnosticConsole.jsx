@@ -3,7 +3,19 @@ import { useState, useEffect, useRef } from 'react';
 export default function DiagnosticConsole() {
     const [logs, setLogs] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [perfStats, setPerfStats] = useState({ domNodes: 0, jsHeapMb: 'N/A' });
     const bottomRef = useRef(null);
+
+    // Track performance metrics
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setPerfStats({
+                domNodes: document.getElementsByTagName('*').length,
+                jsHeapMb: window.performance?.memory ? (window.performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1) : 'N/A'
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const handleLog = (e) => {
@@ -60,6 +72,14 @@ export default function DiagnosticConsole() {
                    {isOpen ? '▼' : '▲'} API Diagnostics Terminal
                </span>
                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                   {/* Performance Badges */}
+                   <span title="JS Heap Memory" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-blue)' }}>
+                       🧠 {perfStats.jsHeapMb}MB
+                   </span>
+                   <span title="Total DOM Nodes" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-red)' }}>
+                       📄 {perfStats.domNodes} DOM
+                   </span>
+                   
                    {logs.some(l => l.level === 'warn' || l.level === 'error') && !isOpen && (
                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-yellow)', boxShadow: '0 0 8px var(--accent-yellow)', animation: 'pulse-live 2s infinite' }}></span>
                    )}

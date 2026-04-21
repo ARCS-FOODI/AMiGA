@@ -162,7 +162,7 @@ def get_active_file_window(filename: str, hours: float = 4.0):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading window: {e}")
 
-def _read_csv_window(file_path: Path, hours: float) -> str:
+def _read_csv_window(file_path: Path, hours: float) -> Response:
     """Reads a CSV file from the end and returns rows within the last N hours."""
     # Define cutoff
     now = datetime.now().astimezone()
@@ -176,7 +176,7 @@ def _read_csv_window(file_path: Path, hours: float) -> str:
         header_line = f.readline()
         if not header_line:
             return Response(content="", media_type="text/csv")
-        header = header_line.decode("utf-8", errors="replace")
+        header = header_line.decode("utf-8", errors="replace").strip()
         
         # 2. Start reading from the end in chunks
         f.seek(0, os.SEEK_END)
@@ -194,14 +194,16 @@ def _read_csv_window(file_path: Path, hours: float) -> str:
             chunk = f.read(read_size) + leftover
             
             lines = chunk.splitlines(keepends=True)
+            # The FIRST line in the chunk (which is the beginning of the block) might be partial
             if pos > 0:
                 leftover = lines.pop(0)
             else:
                 leftover = b""
             
+            # Process lines in reverse order (most recent first)
             for line_bytes in reversed(lines):
                 line = line_bytes.decode("utf-8", errors="replace").strip()
-                if not line or line == header.strip():
+                if not line or line == header:
                     continue
                 
                 parts = line.split(",")
@@ -210,15 +212,23 @@ def _read_csv_window(file_path: Path, hours: float) -> str:
                 
                 try:
                     ts_str = parts[0].strip('"')
-                    if ts_str >= cutoff.isoformat():
+                    # Use accurate datetime parsing for window comparison
+                    line_dt = datetime.fromisoformat(ts_str)
+                    if line_dt.tzinfo is None:
+                        line_dt = line_dt.replace(tzinfo=now.tzinfo)
+                        
+                    if line_dt >= cutoff:
                         rows.append(line)
                     else:
                         finished = True
                         break
-                except:
+                except Exception:
+                    # Skip malformed lines
                     continue
                     
-    content = header + "\n".join(reversed(rows))
+    # Reassemble CSV (Header + rows in chronological order)
+    content = header + "\n" + "\n".join(reversed(rows))
+    
     return Response(
         content=content, 
         media_type="text/csv",

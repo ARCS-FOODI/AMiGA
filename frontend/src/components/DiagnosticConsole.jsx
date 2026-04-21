@@ -93,9 +93,11 @@ export default function DiagnosticConsole() {
                    <span title="Total Chart Data Points Held in Client Array Memory" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-green)' }}>
                        📊 {activePoints.total} PTS
                    </span>
-                   <span title="JS Heap Memory" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-blue)' }}>
-                       🧠 {perfStats.jsHeapMb}MB
-                   </span>
+                   {perfStats.jsHeapMb !== 'N/A' && (
+                       <span title="JS Heap Memory" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-blue)' }}>
+                           🧠 {perfStats.jsHeapMb}MB
+                       </span>
+                   )}
                    <span title="Total DOM Nodes" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-red)' }}>
                        📄 {perfStats.domNodes} DOM
                    </span>

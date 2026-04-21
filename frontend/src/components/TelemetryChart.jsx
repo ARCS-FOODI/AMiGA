@@ -139,9 +139,19 @@ export default function TelemetryChart({
     }, [filename, filter, dataKeys, isComparative, historyHours]);
 
     useEffect(() => {
-        pullData();
-        const interval = setInterval(pullData, refreshInterval);
-        return () => clearInterval(interval);
+        let interval;
+        // JITTER POLLING: Randomly delay the startup of this specific chart by up to 2 seconds.
+        // If all 8 charts fire their fetches at the exact same millisecond, the resulting synchronous 
+        // Papa.parse and SVG node rendering will completely freeze the frontend interaction thread.
+        const timeout = setTimeout(() => {
+            pullData();
+            interval = setInterval(pullData, refreshInterval);
+        }, Math.random() * 2000);
+        
+        return () => {
+            clearTimeout(timeout);
+            if (interval) clearInterval(interval);
+        };
     }, [pullData, refreshInterval]);
 
     // Generate accurate data keys for comparative mode
@@ -251,7 +261,7 @@ export default function TelemetryChart({
                                     hide={hiddenKeys.includes(line.key)}
                                     connectNulls={true}
                                     activeDot={{ r: 4, stroke: 'white', strokeWidth: 2 }}
-                                    animationDuration={500}
+                                    isAnimationActive={false}
                                 />
                             ))}
                         </LineChart>

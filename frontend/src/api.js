@@ -110,7 +110,7 @@ export const fetchTelemetry = (filename) =>
         });
 
 export const fetchTelemetryWindow = (filename, hours = 4) => 
-    fetch(`${API_BASE}/recording/active/window/${filename}?hours=${hours}`)
+    fetch(`${API_BASE}/recording/active/window/${filename}?hours=${hours}&max_points=60`)
         .then(async res => {
             if (!res.ok) throw new Error(`Telemetry Error: ${res.status}`);
             

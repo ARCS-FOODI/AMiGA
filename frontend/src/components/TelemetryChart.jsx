@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, startTransition } from 'react';
 import {
     ResponsiveContainer,
     LineChart,
@@ -114,13 +114,16 @@ export default function TelemetryChart({
                     });
                 }
 
-                processedData = rows.map(row => ({
+                // Apply a maximum point threshold locally as well to safeguard rendering memory
+                processedData = rows.slice(-60).map(row => ({
                     ...row,
                     displayTime: row.time ? new Date(row.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
                 }));
             }
 
-            setData(processedData);
+            startTransition(() => {
+                setData(processedData);
+            });
             setError(null);
 
             // --- DIAGNOSTICS: Report data size to window ---
@@ -253,7 +256,7 @@ export default function TelemetryChart({
                                 <Line
                                     key={line.key}
                                     name={line.label}
-                                    type="monotone"
+                                    type="linear"
                                     dataKey={line.key}
                                     stroke={line.color}
                                     strokeWidth={2}

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Dict, Optional
-from datetime import datetime
+from typing import Dict, Optional, List
+from datetime import datetime, timedelta
 from pathlib import Path
 import os
 
@@ -143,3 +143,88 @@ def download_active_file(filename: str):
         media_type='text/csv',
         filename=filename
     )
+
+@router.get("/active/window/{filename}")
+def get_active_file_window(filename: str, hours: float = 4.0):
+    """Returns a time-windowed slice of a CSV file from the active session."""
+    if not _is_recording or not _active_session_dir:
+        raise HTTPException(status_code=400, detail="No active recording session.")
+    
+    if not filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Access denied: Only .csv files are exposed.")
+    
+    file_path = Path(_active_session_dir) / os.path.basename(filename)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
+    
+    try:
+        return _read_csv_window(file_path, hours)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading window: {e}")
+
+def _read_csv_window(file_path: Path, hours: float) -> str:
+    """Reads a CSV file from the end and returns rows within the last N hours."""
+    from fastapi.responses import Response
+    
+    # Define cutoff
+    now = datetime.now().astimezone()
+    cutoff = now - timedelta(hours=hours)
+    
+    header = ""
+    rows: List[str] = []
+    
+    with open(file_path, "rb") as f:
+        # 1. Get header
+        header_line = f.readline()
+        if not header_line:
+            return ""
+        header = header_line.decode("utf-8", errors="replace")
+        
+        # 2. Start reading from the end in chunks
+        f.seek(0, os.SEEK_END)
+        file_size = f.tell()
+        
+        buffer_size = 1024 * 64 # 64KB chunks
+        pos = file_size
+        leftover = b""
+        
+        finished = False
+        while pos > 0 and not finished:
+            read_size = min(pos, buffer_size)
+            pos -= read_size
+            f.seek(pos)
+            chunk = f.read(read_size) + leftover
+            
+            lines = chunk.splitlines(keepends=True)
+            # The first line of the chunk might be incomplete (except for the very first chunk at pos=0)
+            if pos > 0:
+                leftover = lines.pop(0)
+            else:
+                leftover = b""
+            
+            # Process lines in reverse order
+            for line_bytes in reversed(lines):
+                line = line_bytes.decode("utf-8", errors="replace").strip()
+                if not line or line == header.strip():
+                    continue
+                
+                # Extract timestamp (first column)
+                parts = line.split(",")
+                if not parts:
+                    continue
+                
+                try:
+                    ts_str = parts[0].strip('"')
+                    # Fast check: iso timestamps are comparable as strings for simple windowing
+                    if ts_str >= cutoff.isoformat():
+                        rows.append(line)
+                    else:
+                        finished = True
+                        break
+                except:
+                    # Skip malformed lines
+                    continue
+                    
+    # Combine header + reverse(rows) since we collected them from the end
+    content = header + "\n".join(reversed(rows))
+    return Response(content=content, media_type="text/csv")

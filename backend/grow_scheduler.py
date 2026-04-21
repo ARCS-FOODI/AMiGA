@@ -135,16 +135,23 @@ def get_grow_status() -> Dict[str, Any]:
         created_at = now
         
     delta = now - created_at
-    current_day = max(0, delta.days)
+    current_day_float = max(0, delta.total_seconds() / 86400.0)
+    current_day = int(current_day_float)
     
+    phases = recipe.get("phases", [])
     active_phase = None
-    for phase in recipe.get("phases", []):
+    next_phase = None
+    active_phase_index = -1
+
+    for i, phase in enumerate(phases):
         if phase.get("day_start", 0) <= current_day <= phase.get("day_end", 999):
             active_phase = phase
+            active_phase_index = i
+            if i + 1 < len(phases):
+                next_phase = phases[i+1]
             break
 
     # Calculate total duration
-    phases = recipe.get("phases", [])
     total_days = max((p.get("day_end", 0) for p in phases), default=0)
 
     state = _read_json(SCHED_STATE_FILE, default={"last_fluid_ts": 0, "running": False})
@@ -158,12 +165,20 @@ def get_grow_status() -> Dict[str, Any]:
     except:
         pass
 
+    # Phase specific metrics
+    phase_end_day = active_phase.get("day_end", 0) if active_phase else 0
+    phase_remaining_days = max(0, phase_end_day - current_day_float) if active_phase else 0
+
     return {
         "active": _thread is not None and _thread.is_alive(),
         "is_cycling": (active_phase is not None) and is_running,
         "current_day": current_day,
+        "current_day_float": round(current_day_float, 3),
         "total_days": total_days,
         "phase": active_phase if is_running else None,
+        "next_phase": next_phase.get("name") if next_phase else None,
+        "phase_end_day": phase_end_day,
+        "phase_remaining_days": round(phase_remaining_days, 3),
         "last_fluid_ts": state.get("last_fluid_ts", 0),
         "created_at": recipe.get("created_at"),
         "current_voltages": current_voltages

@@ -10,7 +10,7 @@ import {
     Legend 
 } from 'recharts';
 import Papa from 'papaparse';
-import { fetchTelemetry } from '../api';
+import { fetchTelemetryWindow } from '../api';
 import { POLL_INTERVALS } from '../polling';
 
 /**
@@ -54,7 +54,8 @@ export default function TelemetryChart({
 
     const pullData = useCallback(async () => {
         try {
-            const csvText = await fetchTelemetry(filename);
+            // BACKEND OPTIMIZATION: Fetch ONLY the requested window
+            const csvText = await fetchTelemetryWindow(filename, historyHours);
             const parsed = Papa.parse(csvText, { 
                 header: true, 
                 dynamicTyping: true,
@@ -65,15 +66,7 @@ export default function TelemetryChart({
                 throw new Error("Failed to parse CSV data.");
             }
 
-            // Filter for last N hours first (Performance)
-            const now = new Date();
-            const cutoff = now.getTime() - (historyHours * 60 * 60 * 1000);
-            
-            let sourceRows = parsed.data.filter(row => {
-                if (!row.time) return false;
-                const d = new Date(row.time);
-                return d.getTime() > cutoff;
-            });
+            let sourceRows = parsed.data;
 
             let processedData = [];
 

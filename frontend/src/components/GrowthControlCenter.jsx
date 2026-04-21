@@ -252,14 +252,48 @@ export default function GrowthControlCenter() {
                             </div>
 
                             {/* Cycle Timeline */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '150px' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Current Timeline</span>
-                                <div style={{ fontSize: '0.9rem' }}>
-                                    Day <strong style={{ color: 'white', fontSize: '1.1rem' }}>{currentDay}</strong> / <span style={{ color: isCycling ? 'var(--accent-teal)' : 'var(--text-secondary)' }}>Phase: {activePhase}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', minWidth: '220px' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cycle Timeline</span>
+                                <div style={{ fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <span>Day <strong style={{ color: 'white', fontSize: '1.2rem' }}>{status?.current_day_float?.toFixed(1) || '0.0'}</strong></span>
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Total: {totalDays}d</span>
+                                    </div>
+                                    <div style={{ color: isCycling ? 'var(--accent-teal)' : 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600' }}>
+                                        Phase: {activePhase}
+                                    </div>
                                 </div>
+                                
                                 {isCycling && (
-                                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
-                                        <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--accent-teal)', transition: 'width 1s ease-out' }}></div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {/* Phase Progress Bar */}
+                                        <div style={{ position: 'relative', width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                            <div style={{ 
+                                                width: `${(() => {
+                                                    const start = status?.phase?.day_start || 0;
+                                                    const end = status?.phase?.day_end || 1;
+                                                    const dur = end - start;
+                                                    return dur > 0 ? Math.min(100, Math.max(0, ((status?.current_day_float - start) / dur) * 100)) : 100;
+                                                })()}%`, 
+                                                height: '100%', 
+                                                background: 'linear-gradient(90deg, var(--accent-teal), var(--accent-blue))', 
+                                                boxShadow: '0 0 10px var(--accent-teal)',
+                                                transition: 'width 1s ease-out' 
+                                            }}></div>
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--accent-yellow)', fontWeight: 'bold' }}>
+                                                {status?.phase_remaining_days > 0 
+                                                    ? `⏳ ${status.phase_remaining_days.toFixed(1)} days left in phase`
+                                                    : '✓ Phase completing...'}
+                                            </span>
+                                            {status?.next_phase && (
+                                                <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                    Next: {status.next_phase}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

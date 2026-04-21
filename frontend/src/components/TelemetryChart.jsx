@@ -222,7 +222,7 @@ export default function TelemetryChart({
                         Building Matrix View...
                     </div>
                 ) : (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="99%" height="100%" debounce={200}>
                         <LineChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                             <XAxis

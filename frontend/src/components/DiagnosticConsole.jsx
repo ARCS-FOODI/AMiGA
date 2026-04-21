@@ -20,7 +20,9 @@ export default function DiagnosticConsole() {
 
     useEffect(() => {
         if (isOpen && bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+            // Use 'auto' instead of 'smooth'. Rapid 'smooth' overlapping calls
+            // completely lock the browser's interaction thread!
+            bottomRef.current.scrollIntoView({ behavior: 'auto' });
         }
     }, [logs, isOpen]);
 

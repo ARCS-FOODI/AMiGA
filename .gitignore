@@ -249,3 +249,5 @@ data/records/
 data/current_recipe.json
 data/scheduler_state.json
 backend/data/scale_state.tmp
+data/recording_state.json
+data/recording_state.tmp

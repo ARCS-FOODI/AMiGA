@@ -5,6 +5,7 @@ from typing import Dict, Optional, List
 from datetime import datetime, timedelta
 from pathlib import Path
 import os
+import json
 
 from ... import scale_telemetry
 from ... import sis_telemetry
@@ -23,6 +24,10 @@ router = APIRouter(
 _active_session_dir: Optional[str] = None
 _is_recording: bool = False
 
+ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = ROOT / "data"
+STATE_FILE = DATA_DIR / "recording_state.json"
+
 class RecordingConfigRequest(BaseModel):
     recipeName: Optional[str] = None
     frequencies: Dict[str, float] = {
@@ -36,8 +41,52 @@ class RecordingConfigRequest(BaseModel):
     }
 
 def _get_base_path() -> Path:
-    # Resolve the intended unified data directory regardless of cwd
-    return Path(__file__).resolve().parents[3] / "data" / "records"
+    return DATA_DIR / "records"
+
+def _save_state(is_recording: bool, session_dir: Optional[str], config: Optional[dict] = None):
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(STATE_FILE, "w") as f:
+            json.dump({
+                "is_recording": is_recording,
+                "session_dir": session_dir,
+                "config": config
+            }, f)
+    except Exception as e:
+        print(f"[REC] Failed to save state: {e}")
+
+def _load_state() -> dict:
+    try:
+        if STATE_FILE.exists():
+            with open(STATE_FILE, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"[REC] Failed to load state: {e}")
+    return {"is_recording": False, "session_dir": None, "config": None}
+
+def init_and_resume():
+    """Called on app startup to resume any active recording."""
+    global _is_recording, _active_session_dir
+    state = _load_state()
+    if state.get("is_recording") and state.get("session_dir"):
+        session_dir = state["session_dir"]
+        if Path(session_dir).exists():
+            print(f"[REC] Resuming active recording session: {session_dir}")
+            _active_session_dir = session_dir
+            _is_recording = True
+            
+            # Use saved config or defaults
+            f = state.get("config", {}).get("frequencies", {})
+            scale_telemetry.start(_active_session_dir, f.get("scale", 5.0))
+            sis_telemetry.start(_active_session_dir, f.get("sis", 5.0))
+            sensors_telemetry.start(_active_session_dir, f.get("sensors", 10.0))
+            scd41_telemetry.start(_active_session_dir, f.get("co2", 10.0))
+            tsl2561_telemetry.start(_active_session_dir, f.get("light", 10.0))
+            light_telemetry.start(_active_session_dir, f.get("light_status", 10.0))
+            pump_telemetry.start(_active_session_dir, f.get("pump_status", 5.0))
+        else:
+            print(f"[REC] Session dir {session_dir} disappeared. Resetting state.")
+            _save_state(False, None)
 
 @router.post("/start")
 def start_recording(config: RecordingConfigRequest):
@@ -66,6 +115,7 @@ def start_recording(config: RecordingConfigRequest):
         pump_telemetry.start(_active_session_dir, f.get("pump_status", 5.0))
         
         _is_recording = True
+        _save_state(True, _active_session_dir, config.dict())
         return {"status": "recording_started", "session_dir": _active_session_dir}
         
     except Exception as e:
@@ -90,6 +140,7 @@ def stop_recording():
         last_session = _active_session_dir
         _is_recording = False
         _active_session_dir = None
+        _save_state(False, None)
         
         return {"status": "recording_stopped", "session_dir": last_session}
         

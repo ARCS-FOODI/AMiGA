@@ -35,6 +35,10 @@ async def lifespan(app: FastAPI):
     hs_tsl2561.manager.startup()
     grow_scheduler.start()
     
+    # Persistent Recording: Resume any active session on startup/reload
+    from .routers import recording
+    recording.init_and_resume()
+    
     # Do not auto-start scale and sis telemetry here; let /recording/start handle it.
     # We remove scale_telemetry.start() and sis_telemetry.start() from startup.
     

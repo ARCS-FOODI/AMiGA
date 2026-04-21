@@ -144,7 +144,15 @@ def get_grow_status() -> Dict[str, Any]:
     active_phase_index = -1
 
     for i, phase in enumerate(phases):
-        if phase.get("day_start", 0) <= current_day <= phase.get("day_end", 999):
+        # Precision Phase Transition: 
+        # Compare current_day_float against phase boundaries [start, end)
+        start = float(phase.get("day_start", 0))
+        end = float(phase.get("day_end", 999))
+
+        # Check if we are within this phase. 
+        # For the very last phase, we allow it to be inclusive of the end day.
+        is_last = (i == len(phases) - 1)
+        if start <= current_day_float < end or (is_last and current_day_float == end):
             active_phase = phase
             active_phase_index = i
             if i + 1 < len(phases):

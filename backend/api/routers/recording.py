@@ -196,7 +196,7 @@ def download_active_file(filename: str):
     )
 
 @router.get("/active/window/{filename}")
-def get_active_file_window(filename: str, hours: float = 4.0):
+def get_active_file_window(filename: str, hours: float = 4.0, max_points: int = 150):
     """Returns a time-windowed slice of a CSV file from the active session."""
     if not _is_recording or not _active_session_dir:
         raise HTTPException(status_code=400, detail="No active recording session.")
@@ -209,11 +209,11 @@ def get_active_file_window(filename: str, hours: float = 4.0):
         raise HTTPException(status_code=404, detail=f"File '{filename}' not found.")
     
     try:
-        return _read_csv_window(file_path, hours)
+        return _read_csv_window(file_path, hours, max_points)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading window: {e}")
 
-def _read_csv_window(file_path: Path, hours: float) -> Response:
+def _read_csv_window(file_path: Path, hours: float, max_points: int) -> Response:
     """Reads a CSV file from the end and returns rows within the last N hours."""
     # Define cutoff
     now = datetime.now().astimezone()
@@ -277,6 +277,49 @@ def _read_csv_window(file_path: Path, hours: float) -> Response:
                     # Skip malformed lines
                     continue
                     
+    # Downsample points if requested
+    if max_points > 0 and len(rows) > max_points:
+        header_parts = [h.strip() for h in header.split(",")]
+        device_idx = -1
+        # Look for device grouping key
+        for i, h in enumerate(header_parts):
+            if h in ["device_id", "device_name"]:
+                device_idx = i
+                break
+                
+        if device_idx >= 0:
+            groups: Dict[str, List[str]] = {}
+            for row in rows:
+                parts = row.split(",")
+                dev = parts[device_idx] if len(parts) > device_idx else "unknown"
+                if dev not in groups:
+                    groups[dev] = []
+                groups[dev].append(row)
+                
+            sampled_rows = []
+            for dev, dev_rows in groups.items():
+                if len(dev_rows) > max_points:
+                    step = len(dev_rows) / max_points
+                    for i in range(max_points):
+                        sampled_rows.append(dev_rows[int(i * step)])
+                else:
+                    sampled_rows.extend(dev_rows)
+            rows = sampled_rows
+        else:
+            step = len(rows) / max_points
+            sampled_rows = []
+            for i in range(max_points):
+                sampled_rows.append(rows[int(i * step)])
+            rows = sampled_rows
+
+        # Re-sort reversing chronological order
+        def get_ts(r):
+            try:
+                return r.split(",")[0].strip('"')
+            except:
+                return ""
+        rows.sort(key=get_ts, reverse=True)
+
     # Reassemble CSV (Header + rows in chronological order)
     content = header + "\n" + "\n".join(reversed(rows))
     

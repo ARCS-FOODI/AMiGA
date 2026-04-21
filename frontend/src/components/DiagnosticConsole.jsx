@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
+let logIdCounter = 0;
+
 export default function DiagnosticConsole() {
     const [logs, setLogs] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +22,8 @@ export default function DiagnosticConsole() {
     useEffect(() => {
         const handleLog = (e) => {
             setLogs(prev => {
-                const newLogs = [...prev, e.detail];
+                const newLog = { ...e.detail, id: ++logIdCounter };
+                const newLogs = [...prev, newLog];
                 // Keep only the last 100 logs to prevent memory leaks
                 if (newLogs.length > 100) return newLogs.slice(newLogs.length - 100);
                 return newLogs;
@@ -108,8 +111,8 @@ export default function DiagnosticConsole() {
                            Monitoring API payload metrics...
                        </div>
                    ) : (
-                       logs.map((log, i) => (
-                           <div key={i} style={{
+                       logs.map((log) => (
+                           <div key={log.id} style={{
                                color: log.level === 'error' ? 'var(--accent-red)' : log.level === 'warn' ? 'var(--accent-yellow)' : '#A3A3A3',
                                borderBottom: '1px solid rgba(255,255,255,0.03)',
                                paddingBottom: '4px',

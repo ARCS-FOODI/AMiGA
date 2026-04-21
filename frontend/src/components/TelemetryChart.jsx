@@ -122,6 +122,14 @@ export default function TelemetryChart({
 
             setData(processedData);
             setError(null);
+            
+            // --- DIAGNOSTICS: Report data size to window ---
+            try {
+                window.dispatchEvent(new CustomEvent('chart-data-size', {
+                    detail: { chartId: title, points: processedData.length }
+                }));
+            } catch (e) {}
+
         } catch (err) {
             console.error(`[TelemetryChart] ${filename} error:`, err);
             setError(err.message);

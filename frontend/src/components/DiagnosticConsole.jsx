@@ -6,7 +6,21 @@ export default function DiagnosticConsole() {
     const [logs, setLogs] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [perfStats, setPerfStats] = useState({ domNodes: 0, jsHeapMb: 'N/A' });
+    const [activePoints, setActivePoints] = useState({ total: 0, details: {} });
     const bottomRef = useRef(null);
+
+    // Track Chart Data Size
+    useEffect(() => {
+        const handleChartSize = (e) => {
+            setActivePoints(prev => {
+                const newDetails = { ...prev.details, [e.detail.chartId]: e.detail.points };
+                const total = Object.values(newDetails).reduce((sum, val) => sum + val, 0);
+                return { total, details: newDetails };
+            });
+        };
+        window.addEventListener('chart-data-size', handleChartSize);
+        return () => window.removeEventListener('chart-data-size', handleChartSize);
+    }, []);
 
     // Track performance metrics
     useEffect(() => {
@@ -46,7 +60,7 @@ export default function DiagnosticConsole() {
             position: 'fixed',
             bottom: '20px',
             right: '20px',
-            width: isOpen ? '450px' : 'auto',
+            width: isOpen ? '500px' : 'auto',
             background: 'rgba(15, 15, 20, 0.85)',
             border: isOpen ? '1px solid var(--accent-blue)' : '1px solid var(--glass-border)',
             borderRadius: '8px',
@@ -76,6 +90,9 @@ export default function DiagnosticConsole() {
                </span>
                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                    {/* Performance Badges */}
+                   <span title="Total Chart Data Points Held in Client Array Memory" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-green)' }}>
+                       📊 {activePoints.total} PTS
+                   </span>
                    <span title="JS Heap Memory" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-blue)' }}>
                        🧠 {perfStats.jsHeapMb}MB
                    </span>

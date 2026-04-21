@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from typing import Dict, Optional, List
 from datetime import datetime, timedelta
@@ -164,8 +164,6 @@ def get_active_file_window(filename: str, hours: float = 4.0):
 
 def _read_csv_window(file_path: Path, hours: float) -> str:
     """Reads a CSV file from the end and returns rows within the last N hours."""
-    from fastapi.responses import Response
-    
     # Define cutoff
     now = datetime.now().astimezone()
     cutoff = now - timedelta(hours=hours)
@@ -177,7 +175,7 @@ def _read_csv_window(file_path: Path, hours: float) -> str:
         # 1. Get header
         header_line = f.readline()
         if not header_line:
-            return ""
+            return Response(content="", media_type="text/csv")
         header = header_line.decode("utf-8", errors="replace")
         
         # 2. Start reading from the end in chunks
@@ -196,35 +194,37 @@ def _read_csv_window(file_path: Path, hours: float) -> str:
             chunk = f.read(read_size) + leftover
             
             lines = chunk.splitlines(keepends=True)
-            # The first line of the chunk might be incomplete (except for the very first chunk at pos=0)
             if pos > 0:
                 leftover = lines.pop(0)
             else:
                 leftover = b""
             
-            # Process lines in reverse order
             for line_bytes in reversed(lines):
                 line = line_bytes.decode("utf-8", errors="replace").strip()
                 if not line or line == header.strip():
                     continue
                 
-                # Extract timestamp (first column)
                 parts = line.split(",")
                 if not parts:
                     continue
                 
                 try:
                     ts_str = parts[0].strip('"')
-                    # Fast check: iso timestamps are comparable as strings for simple windowing
                     if ts_str >= cutoff.isoformat():
                         rows.append(line)
                     else:
                         finished = True
                         break
                 except:
-                    # Skip malformed lines
                     continue
                     
-    # Combine header + reverse(rows) since we collected them from the end
     content = header + "\n".join(reversed(rows))
-    return Response(content=content, media_type="text/csv")
+    return Response(
+        content=content, 
+        media_type="text/csv",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )

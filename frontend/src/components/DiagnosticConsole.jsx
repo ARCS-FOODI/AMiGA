@@ -7,6 +7,7 @@ export default function DiagnosticConsole() {
     const [isOpen, setIsOpen] = useState(false);
     const [perfStats, setPerfStats] = useState({ domNodes: 0, jsHeapMb: 'N/A' });
     const [activePoints, setActivePoints] = useState({ total: 0, details: {} });
+    const [cumulativeKb, setCumulativeKb] = useState(0);
     const bottomRef = useRef(null);
 
     // Track Chart Data Size
@@ -35,6 +36,9 @@ export default function DiagnosticConsole() {
 
     useEffect(() => {
         const handleLog = (e) => {
+            if (e.detail.kbSize) {
+                setCumulativeKb(prev => prev + parseFloat(e.detail.kbSize));
+            }
             setLogs(prev => {
                 const newLog = { ...e.detail, id: ++logIdCounter };
                 const newLogs = [...prev, newLog];
@@ -47,11 +51,14 @@ export default function DiagnosticConsole() {
         return () => window.removeEventListener('telemetry-metric', handleLog);
     }, []);
 
+    // Scroll throttle to prevent layout thrashing
+    const scrollTimeout = useRef(null);
     useEffect(() => {
         if (isOpen && bottomRef.current) {
-            // Use 'auto' instead of 'smooth'. Rapid 'smooth' overlapping calls
-            // completely lock the browser's interaction thread!
-            bottomRef.current.scrollIntoView({ behavior: 'auto' });
+            if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+            scrollTimeout.current = setTimeout(() => {
+                bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+            }, 100);
         }
     }, [logs, isOpen]);
 
@@ -92,6 +99,9 @@ export default function DiagnosticConsole() {
                    {/* Performance Badges */}
                    <span title="Total Chart Data Points Held in Client Array Memory" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-green)' }}>
                        📊 {activePoints.total} PTS
+                   </span>
+                   <span title="Cumulative Network Payload Extracted" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-red)' }}>
+                       🌐 {(cumulativeKb / 1024).toFixed(2)} MB Rx
                    </span>
                    {perfStats.jsHeapMb !== 'N/A' && (
                        <span title="JS Heap Memory" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-blue)' }}>

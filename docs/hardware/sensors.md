@@ -20,4 +20,4 @@
 
 ### System Usage
 - **Closed-Loop Control**: Data from these sensors is the primary input for `control.py`. The "Vote-K" logic counts how many sensors report a voltage above the irrigation threshold before triggering a pump run.
-- **Environment Logging**: Every read is logged to the `master.csv` file with a timestamp and sample index for long-term health tracking.
+- **Environment Logging**: Every read is logged to the `sensors.csv` file with a timestamp and sample index for long-term health tracking.

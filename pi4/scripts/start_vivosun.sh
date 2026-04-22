@@ -38,7 +38,16 @@ sleep 60
 echo "Launching VIVOSUN App..."
 waydroid app launch com.vivosun.android &
 
+# 8. POSITION THE WINDOW
+# We wait for the window to exist, then teleport it to your coordinates
+echo "Positioning window at 1210, 75..."
+sleep 5
+WID=$(xdotool search --name "Weston" | head -n 1)
+xwininfo -id $WID # Just to log it
+xdotool windowmove $WID 1210 75
+xdotool windowactivate $WID
+
 # 9. START SCRAPER
 echo "Starting Scraper..."
 sleep 30
-python3 /home/sensoil/Documents/AMiGA/pi4/scripts/vivosun_scraper.py
+python3 /home/sensoil/vivosun_scraper.py

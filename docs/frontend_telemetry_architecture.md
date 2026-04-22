@@ -21,7 +21,7 @@ The main dashboard (`App.jsx`) initializes 8 instances of `TelemetryChart`. Ever
 ### C. Soil Moisture Sensor Arrays (`sensors.csv`)
 - **Source**: ADS1115 ADC Modules (I2C addressed, typically `0x48` and `0x4b`)
 - **Data Columns**: `time`, `device_id`, `v0`, `v1`, `v2`, `v3` (representing raw voltages for 4 probes per tray).
-- **Rendered instances**: 3 chart instances (One Comparative Matrix overlaying all devices, and two isolated charts for Tray 1 and Tray 2).
+- **Rendered instances**: 3 chart instances (One Comparative Matrix overlaying all devices, and two isolated charts for Tray 1 and Tray 2). Charts feature a **relative scale reference system** natively tracking sensor states with persistent storage, along with **interactive Grafana-styled chart legends** for filtering overlays.
 
 ### D. Soil Chemistry and Nutrients (`sis_data.csv`)
 - **Source**: SIS Modbus Sensors
@@ -91,7 +91,7 @@ In `frontend/src/api.js`, the `fetchTelemetryWindow` method evaluates the size (
 - `> 50 KB`: Emits a `[METRIC NOTICE]` warn log to keep an eye on DOM performance.
 - `> 500 KB`: Sounds an extreme `[METRIC ALERT]` siren to alert developers that the backend downsampling limits have likely failed.
 
-### Architectural Inefficiencies Let's Keep an Eye On
-Currently, every `TelemetryChart.jsx` instance resolves its own data independently over the network. 
-- **The Issue**: Because `App.jsx` mounts three separate charts for `sensors.csv` (One Comparative, Tray 1, and Tray 2), and two for `sis_data.csv`, the client is re-requesting the **same exact CSV files** multiple times every 5 seconds.
-- **The Ideal Future Fix**: If scaling hits bottlenecks again, we should implement a central `TelemetryContext` or `Redux Store` that fetches `sensors.csv` and `sis_data.csv` *once* per polling cycle, and distributes the data downward to the nested chart components. Currently, it's trivial due to the newly implemented downsampling constraint (150 rows), but something to keep in mind!
+### Redundant API Chart Fetches (Resolved via Jitter Polling)
+Because `App.jsx` mounts three separate charts for `sensors.csv` (One Comparative, Tray 1, and Tray 2), and two for `sis_data.csv`, the client initially suffered from synchronous DOM locks when re-requesting the **same exact CSV files** multiple times every 5 seconds.
+- **The Execution**: Rather than deploying a heavyweight global `TelemetryContext` or `Redux Store`, the UI mitigates data clogging using **Randomized Jitter Polling** (delaying startup execution loops randomly via `setTimeout`).
+- **Rendering Optims**: Jitter polling combined intimately with React 18's `startTransition` and strict component-level `useMemo` caching ensures that asynchronous data merges directly into the DOM seamlessly without requiring centralized networking logic, successfully circumventing standard main-thread CPU thrash limitations.

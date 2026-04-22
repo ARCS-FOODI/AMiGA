@@ -2,7 +2,7 @@
 
 ## Moisture Array (ADS1115)
 - **ADC:** **ADS1115** (4-channel, 16-bit I2C).
-- **I2C Address:** `0x48`.
+- **I2C Addresses:** Supports multiple multi-device arrays simultaneously via I2C (e.g. `0x48` for Tray 1, `0x4b` for Tray 2). The system's backend telemetry aggregates each device robustly into shared CSV arrays.
 - **Gain:** `2/3` (±6.144V Range) — Required to safely read 5V sensor signals.
 - **Physical Integration:** 
   - Up to 4 analog moisture sensors connected to channels **A0, A1, A2, A3**.

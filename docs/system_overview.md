@@ -15,7 +15,7 @@ It is organized into specific directories for its core functions (`api/` for end
 
 - **Hardware Abstraction**: Device-specific driver classes for pumps, lights, and sensors (scale, SIS, SCD41, TSL2561).
 - **Background Tasks**: The `grow_scheduler` coordinates daily feeding and light cycles, alongside diagnostic scripts like `pump_diagnostic.py`.
-- **Telemetry Processing**: Dedicated telemetry modules (`scale_telemetry.py`, `sis_telemetry.py`) funnel sub-sensor data asynchronously into organized databases or CSV stores.
+- **Telemetry Processing**: Uses a robust, event-driven architecture (logging via dispatcher callbacks upon state changes, e.g. `dispense_ml`) alongside a 60-minute system heartbeat to prevent log bloat, systematically logging all changes into organized local CSV stores for analysis.
 
 ### Edge Computing & Integrations
 AMiGA expands beyond a single controller via external edge devices for extended data extraction:
@@ -24,9 +24,11 @@ AMiGA expands beyond a single controller via external edge devices for extended 
 
 ### Frontend (React)
 A responsive web dashboard built with **Vite** and **Tailwind CSS**. It provides:
+- **Growth Lifecycle Hub**: A module driving automation through defined recipes. Includes "Start Cycle", "Stop Cycle" and "Restart Cycle" features to securely halt or overwrite ongoing automation tracks.
+- **Hardware Health Monitor**: A 3-state real-time UI probe reflecting the hardware daemon as ONLINE, DEGRADED (backend is on but modules raise faults), or OFFLINE.
 - **Manual Overrides**: Instant control toggle for pumps and lights.
 - **Rule Configuration**: User-defined moisture thresholds for automated irrigation.
-- **Data Visualization**: Live graphing of soil health and system metrics.
+- **Data Visualization**: Live graphing of soil health and system metrics globally and per tray, with responsive downsampled charts.
 
 ## Hardware Composition
 The AMiGA physical stack is modular:

@@ -114,3 +114,37 @@ Water Retention, High Germination, Ideal for Microgreens, Sprouts & Wheatgrass â
 13. **How to Harvest**
     *   Use scissors.
     *   Cut just above mat.
+
+---
+
+## Software Recipe Configuration
+
+The backend `grow_scheduler` evaluates rules stored in `data/current_recipe.json` to process the hardware automation. The UI includes a collapsible configurator to "Add New Growth Phase" or reset to system defaults.
+
+### Recipe JSON Structure Overview
+A recipe is structured as a chronological array of parameters (defining growth "phases" like Germination and Light Growth) enforcing boundaries primarily on standard `day_start` and `day_end` conditions.
+
+Example `fluid_control` phase block:
+```json
+"fluid_control": {
+  "pump": "water",
+  "trigger": "moisture",
+  "sensor_override": false,
+  "dry_threshold_v": 4.0,
+  "vote_k": 2,
+  "dose_ml": 50,
+  "hz": 10000,
+  "interval_hours": 24,
+  "cooldown_minutes": 60
+}
+```
+
+### The `vote_k` Parameter (`k=2`)
+The `vote_k` (often referred to simply as `k=2`) variable represents a **Consensus Trigger**.
+Because the physical system employs multiple individual ADC moisture probes across the environment, the `vote_k` sets the strict minimum threshold for how many unique sensor signals must cross the `dry_threshold_v` (indicating low water retention) before an automated feeding dose is executed. If `k=2`, at least 2 sensors must agree that the tray is dry.
+
+### Additional Configurable Variables
+*   **`trigger`**: Either `moisture` (feedback loop via sensor arrays) or `scheduled` (running strictly on absolute timers).
+*   **`sensor_override`**: Bypasses sensor logic entirely, blindly forcing `dispense_ml` whenever the `interval_hours` trigger fires.
+*   **`hz` (Pump Frequency)**: Correlates precisely mapped step-rate frequencies to physical payload volume. E.g., `10000` Hz correlates via backend calibration constants to dispense fluids accurately.
+*   **`cooldown_minutes`**: An un-bypassable hardware timeout ensuring the peristaltic motors never overflow a tray due to recursive fault loops.

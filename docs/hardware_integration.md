@@ -3,6 +3,7 @@
 This document provides an index of AMiGA's physical hardware integration and wiring configurations. Click on a component below for detailed technical documentation.
 
 ## Core Components
+- [Physical Environment & Rigging](hardware/physical_environment.md) - Details the Vivosun tent setup and custom wooden AMiGA hardware tower.
 - [System Overview](system_overview.md) - High-level software and hardware architecture.
 - [Main Controller](hardware/main_controller.md) - Raspberry Pi and GPIO management.
 - [Pumping System](hardware/pumps.md) - TMC2209 drivers and pump configurations.

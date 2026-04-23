@@ -3,10 +3,10 @@
 ## Grow Light Relay
 - **GPIO Pin:** `LIGHT_PIN` (Configured in `backend/settings.py`)
 - **Controller:** Software managed by `backend/light.py` (`GrowLight` class)
-- **Physical Integration:** 
-  - We use an external programmable relay module.
-  - The relay interacts with a separate default control module that powers the lights.
-  - Shorting the pins on the control module turns the lights **OFF**. Removing the short turns the lights **ON**.
+- **Physical Integration (The RJ11 Hack):** 
+  - The commercial grow light system is controlled via an RJ11 cable output connection.
+  - We discovered that by manually shorting a specific pairing of the 4 internal wires within this RJ11 cable, the system is forced to turn the lights **OFF**. Removing the short turns them **ON**.
+  - We spliced an external programmable relay switch directly to these wire pairs to enable full software automation of the light.
 - **Wiring Configuration (As of March 2026):**
   - **Terminal:** Normally Closed (NC)
   - **Default Unpowered Behavior:** By default, with the Raspberry Pi completely powered down, the relay loses power. The NC contacts remain closed, shorting the control module and keeping the lights **OFF**.
